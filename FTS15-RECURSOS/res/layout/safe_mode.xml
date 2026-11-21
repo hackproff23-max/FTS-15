@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TableLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="match_parent" android:stretchColumns="2"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <TextView android:padding="20.0dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="FTS15 Safe Mode" />
+    <TableRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3.0dp" android:layout_marginBottom="3.0dp">
+        <Button android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Send Profile" android:onClick="SendProfileQuestion" />
+        <Button android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Delete Save Match" android:onClick="DeleteSaveMatchQuestion" />
+    </TableRow>
+    <TableRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3.0dp" android:layout_marginBottom="3.0dp">
+        <Button android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Delete Replays" android:onClick="DeleteReplaysQuestion" />
+        <Button android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Reset Custom Data" android:onClick="ResetCustomDataQuestion" />
+    </TableRow>
+    <TableRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3.0dp" android:layout_marginBottom="3.0dp">
+        <Button android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Reset End Of Season Cups" android:onClick="ResetEndOfSeasonCupsQuestion" />
+        <Button android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Reset Current Regular Season" android:onClick="ResetCurrentRegularSeasonQuestion" />
+    </TableRow>
+    <TableRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3.0dp" android:layout_marginBottom="3.0dp">
+        <Button android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Reset Profile" android:onClick="ResetProfileQuestion" />
+        <Button android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Support Restore" android:onClick="SupportRestoreQuestion" />
+    </TableRow>
+    <TableRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3.0dp" android:layout_marginBottom="3.0dp">
+        <Button android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Exit safe mode" android:onClick="ExitSafeModeQuestion" />
+    </TableRow>
+    <TextView android:id="@id/textResult" android:padding="20.0dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="" />
+</TableLayout>
