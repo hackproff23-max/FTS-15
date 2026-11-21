@@ -1,0 +1,58 @@
+name: Build FTS15
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o projeto
+        uses: actions/checkout@v4
+
+      - name: Instalar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Baixar apktool (ultima versao)
+        run: |
+          URL=$(curl -s -H "Authorization: Bearer ${{ github.token }}" https://api.github.com/repos/iBotPeaches/Apktool/releases/latest | grep browser_download_url | grep '\.jar"' | head -1 | cut -d '"' -f 4)
+          echo "Apktool: $URL"
+          curl -L -o apktool.jar "$URL"
+          java -jar apktool.jar --version
+
+      - name: Compilar com apktool
+        run: |
+          mkdir -p build
+          java -jar apktool.jar b FTS15-RECURSOS -o build/unsigned.apk
+
+      - name: Alinhar e assinar
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          echo "build-tools: $BT"
+          zip -q -d build/unsigned.apk 'META-INF/*' || true
+          "$BT/zipalign" -p -f 4 build/unsigned.apk build/aligned.apk
+          "$BT/apksigner" sign --ks fts15.keystore --ks-pass pass:fts15pass --key-pass pass:fts15pass --ks-key-alias fts15 --out build/FTS15-A15.apk build/aligned.apk
+          "$BT/apksigner" verify -v build/FTS15-A15.apk
+          ls -la build
+
+      - name: Guardar APK (Artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: FTS15-A15-apk
+          path: build/FTS15-A15.apk
+
+      - name: Publicar APK na aba Releases
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest -y --cleanup-tag || true
+          gh release create latest build/FTS15-A15.apk --target "${{ github.sha }}" --title "FTS15 Android 15 (ultimo build)" --notes "APK assinado gerado pelo GitHub Actions"

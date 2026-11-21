@@ -1,0 +1,22 @@
+version: 3.0.3-dirty
+apkFileName: com.firsttouchgames.fts15.apk
+usesFramework:
+  ids:
+  - 1
+sdkInfo:
+  minSdkVersion: 14
+  targetSdkVersion: 28
+versionInfo:
+  versionCode: 59
+  versionName: 2.09
+resourcesInfo:
+  packageId: 127
+  keepRawValues: true
+doNotCompress:
+- arsc
+- m4a
+- png
+- assets/data/audio/crowd.bnk
+- assets/data/audio/se.bnk
+- assets/data/game/managermode_economy.dat
+- assets/data/nis.pak
