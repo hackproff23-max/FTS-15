@@ -1,0 +1,159 @@
+.class abstract Lcom/applovin/impl/sdk/bt;
+.super Lcom/applovin/impl/sdk/ba;
+
+# interfaces
+.implements Lcom/applovin/impl/sdk/o;
+
+
+# instance fields
+.field private a:I
+
+.field private final b:Lcom/applovin/impl/sdk/o;
+
+.field private c:Lcom/applovin/impl/sdk/bd;
+
+
+# direct methods
+.method private constructor <init>(Ljava/lang/String;ILcom/applovin/impl/sdk/AppLovinSdkImpl;)V
+    .locals 1
+
+    invoke-direct {p0, p1, p3}, Lcom/applovin/impl/sdk/ba;-><init>(Ljava/lang/String;Lcom/applovin/impl/sdk/AppLovinSdkImpl;)V
+
+    const/4 v0, 0x0
+
+    iput-object v0, p0, Lcom/applovin/impl/sdk/bt;->c:Lcom/applovin/impl/sdk/bd;
+
+    iput p2, p0, Lcom/applovin/impl/sdk/bt;->a:I
+
+    new-instance v0, Lcom/applovin/impl/sdk/bu;
+
+    invoke-direct {v0, p0, p3, p1}, Lcom/applovin/impl/sdk/bu;-><init>(Lcom/applovin/impl/sdk/bt;Lcom/applovin/impl/sdk/AppLovinSdkImpl;Ljava/lang/String;)V
+
+    iput-object v0, p0, Lcom/applovin/impl/sdk/bt;->b:Lcom/applovin/impl/sdk/o;
+
+    return-void
+.end method
+
+.method constructor <init>(Ljava/lang/String;Lcom/applovin/impl/sdk/bd;Lcom/applovin/impl/sdk/AppLovinSdkImpl;)V
+    .locals 1
+
+    invoke-virtual {p3, p2}, Lcom/applovin/impl/sdk/AppLovinSdkImpl;->a(Lcom/applovin/impl/sdk/bd;)Ljava/lang/Object;
+
+    move-result-object v0
+
+    check-cast v0, Ljava/lang/Integer;
+
+    invoke-virtual {v0}, Ljava/lang/Integer;->intValue()I
+
+    move-result v0
+
+    invoke-direct {p0, p1, v0, p3}, Lcom/applovin/impl/sdk/bt;-><init>(Ljava/lang/String;ILcom/applovin/impl/sdk/AppLovinSdkImpl;)V
+
+    return-void
+.end method
+
+.method static synthetic a(Lcom/applovin/impl/sdk/bt;)I
+    .locals 1
+
+    iget v0, p0, Lcom/applovin/impl/sdk/bt;->a:I
+
+    return v0
+.end method
+
+.method static synthetic a(Lcom/applovin/impl/sdk/bt;I)I
+    .locals 0
+
+    iput p1, p0, Lcom/applovin/impl/sdk/bt;->a:I
+
+    return p1
+.end method
+
+.method static synthetic b(Lcom/applovin/impl/sdk/bt;I)I
+    .locals 1
+
+    iget v0, p0, Lcom/applovin/impl/sdk/bt;->a:I
+
+    sub-int/2addr v0, p1
+
+    iput v0, p0, Lcom/applovin/impl/sdk/bt;->a:I
+
+    return v0
+.end method
+
+.method static synthetic b(Lcom/applovin/impl/sdk/bt;)V
+    .locals 0
+
+    invoke-direct {p0}, Lcom/applovin/impl/sdk/bt;->d()V
+
+    return-void
+.end method
+
+.method private d()V
+    .locals 3
+
+    iget-object v0, p0, Lcom/applovin/impl/sdk/bt;->c:Lcom/applovin/impl/sdk/bd;
+
+    if-eqz v0, :cond_0
+
+    iget-object v0, p0, Lcom/applovin/impl/sdk/bt;->f:Lcom/applovin/impl/sdk/AppLovinSdkImpl;
+
+    invoke-virtual {v0}, Lcom/applovin/impl/sdk/AppLovinSdkImpl;->getSettingsManager()Lcom/applovin/impl/sdk/be;
+
+    move-result-object v0
+
+    iget-object v1, p0, Lcom/applovin/impl/sdk/bt;->c:Lcom/applovin/impl/sdk/bd;
+
+    iget-object v2, p0, Lcom/applovin/impl/sdk/bt;->c:Lcom/applovin/impl/sdk/bd;
+
+    invoke-virtual {v2}, Lcom/applovin/impl/sdk/bd;->c()Ljava/lang/Object;
+
+    move-result-object v2
+
+    invoke-virtual {v0, v1, v2}, Lcom/applovin/impl/sdk/be;->a(Lcom/applovin/impl/sdk/bd;Ljava/lang/Object;)V
+
+    invoke-virtual {v0}, Lcom/applovin/impl/sdk/be;->b()V
+
+    :cond_0
+    return-void
+.end method
+
+
+# virtual methods
+.method public a(I)V
+    .locals 0
+
+    return-void
+.end method
+
+.method public a(Lcom/applovin/impl/sdk/bd;)V
+    .locals 0
+
+    iput-object p1, p0, Lcom/applovin/impl/sdk/bt;->c:Lcom/applovin/impl/sdk/bd;
+
+    return-void
+.end method
+
+.method protected abstract a(Lcom/applovin/impl/sdk/n;Lcom/applovin/impl/sdk/o;)V
+.end method
+
+.method public a(Lorg/json/JSONObject;I)V
+    .locals 0
+
+    return-void
+.end method
+
+.method public run()V
+    .locals 2
+
+    iget-object v0, p0, Lcom/applovin/impl/sdk/bt;->f:Lcom/applovin/impl/sdk/AppLovinSdkImpl;
+
+    invoke-virtual {v0}, Lcom/applovin/impl/sdk/AppLovinSdkImpl;->getConnectionManager()Lcom/applovin/impl/sdk/n;
+
+    move-result-object v0
+
+    iget-object v1, p0, Lcom/applovin/impl/sdk/bt;->b:Lcom/applovin/impl/sdk/o;
+
+    invoke-virtual {p0, v0, v1}, Lcom/applovin/impl/sdk/bt;->a(Lcom/applovin/impl/sdk/n;Lcom/applovin/impl/sdk/o;)V
+
+    return-void
+.end method
