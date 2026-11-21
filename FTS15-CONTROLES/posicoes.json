@@ -1,0 +1,68 @@
+{
+  "tela": [
+    1600,
+    720
+  ],
+  "analogico_base": {
+    "centro": [
+      279.5,
+      530.1
+    ],
+    "raio": 125.0,
+    "topo_esq": [
+      151,
+      402
+    ],
+    "tamanho": 256
+  },
+  "analogico_knob": {
+    "centro": [
+      282.6,
+      530.1
+    ],
+    "raio": 57.0,
+    "topo_esq": [
+      218,
+      466
+    ],
+    "tamanho": 128
+  },
+  "botoes": {
+    "C": {
+      "centro": [
+        1518.7,
+        517.7
+      ],
+      "raio": 64.0,
+      "topo_esq": [
+        1454,
+        453
+      ],
+      "tamanho": 128
+    },
+    "A": {
+      "centro": [
+        1411.8,
+        637.2
+      ],
+      "raio": 64.0,
+      "topo_esq": [
+        1347,
+        573
+      ],
+      "tamanho": 128
+    },
+    "B": {
+      "centro": [
+        1260.7,
+        656.6
+      ],
+      "raio": 64.0,
+      "topo_esq": [
+        1196,
+        592
+      ],
+      "tamanho": 128
+    }
+  }
+}
