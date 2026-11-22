@@ -1,0 +1,114 @@
+=====================================================================
+FTS15 - RESUMO GERAL (versao 9, 22/11/2026)
+Para continuar em qualquer conta: mande este txt + os zips/txt novos
+e diga "continue de onde parou".  Respostas em portugues.
+=====================================================================
+
+REGRAS DO USUARIO
+-----------------
+  - Entregar arquivos em ZIP, para extrair e enviar pelo Termux.
+  - NAO usar scripts em python (usar shell: build.sh / patch.sh).
+  - Sempre entregar tambem um txt de resumo (este arquivo).
+  - Pasta do projeto no Termux: ~/FTS-15 (repo git)
+  - Biblioteca: FTS15-RECURSOS/lib/armeabi-v7a/libFTS15.so (ARM 32 bits)
+  - Ferramentas no Termux: radare2 (r2), clang, ld.lld, llvm
+  - Claude NAO roda o jogo e NAO tem montador ARM: o usuario monta
+    (clang) e testa no celular; Claude le os .txt gerados pelo r2.
+
+
+=====================================================================
+PARTE 1 - CARTAO DE GOL (ETAPA 7)  -> PRONTO, falta testar no celular
+=====================================================================
+Arquivo: FTS15_etapa7_gol_anim.zip  (pasta FTS15-PATCH/)
+  build.sh   monta o codigo (clang + ld.lld) e confere o tamanho
+  patch.sh   grava no libFTS15.so (backup .orig, confere bytes antes)
+  card.s     codigo ARM do cartao (novo Render)
+  syms.txt   enderecos das funcoes do jogo usadas pelo cartao
+
+Animacao do GOL (barras azul = cor do time, branca = faixa de baixo):
+  1) azul = nome do TIME | branca = nome do JOGADOR
+  2) trocam para o lado: azul = numero + nome do JOGADOR |
+     branca = "GOOOOOOOLLLL"
+  3) nome do jogador fica travado em cima; o GOOOLL sai deslizando e a
+     branca passa a mostrar o nome do TIME.
+  Tempos (frames): 45 na 1a tela, troca 15, GOOOLL ate o frame 110,
+  troca 15.  Se ficar rapido/lento demais, pedir ajuste.
+  Cartao amarelo/vermelho/lesao continuam como antes.
+  A bola so aparece enquanto o GOOOLL esta visivel.
+
+COMANDO (extrair + montar + aplicar + enviar ao GitHub):
+  cd ~/FTS-15 && unzip -o "$(ls -t ~/storage/downloads/FTS15_etapa7_gol_anim*.zip | head -1)" && bash FTS15-PATCH/build.sh && bash FTS15-PATCH/patch.sh && git status --short && git add -A && git commit -m "Cartao de gol: animacao time/jogador/GOOOL" && git push
+
+  Sem git push (so testar): tire o final a partir de "&& git status".
+  Se o build.sh mostrar erro: mande a saida para o Claude.
+  O patch.sh pode ser rodado de novo; o original fica em
+  libFTS15.so.orig (para desfazer: copie de volta).
+
+
+======================================================================================================================================
+PARTE 2 - TELA DE ABERTURA DA PARTIDA  -> PRONTO, falta testar no celular
+=====================================================================
+Arquivos (zip FTS15_etapa9_intro.zip, pasta FTS15-PATCH/):
+  intro.s           codigo ARM novo da CHudCompIntroPreview::Render (0x27f104)
+  intro_syms.txt    enderecos das funcoes usadas
+  build_intro.sh    monta (clang + ld.lld), confere tamanho (max 2840)
+  patch_intro.sh    grava no libFTS15.so (backup .orig, confere bytes antes)
+  (o cartao de gol continua em card.s/build.sh/patch.sh, sao independentes)
+
+O que a tela faz:
+  - logo da liga centralizado em cima (so em modo torneio; amistoso = sem logo)
+  - UMA barra: metade esquerda = cor da casa, direita = cor do visitante
+  - escudo (redondo, sem esticar) + nome grande em cada ponta
+  - faixa escura translucida atras; sem faixa branca / clima / publico
+  - animacao: logo aparece (p 0-0.25), barra cresce do meio (0.25-0.55),
+    escudo+nome entram de lado e param (0.55-0.90). A saida e o inverso
+    (se na saida a animacao "repetir", avisar: o progresso viria 0->1).
+
+Logo da liga (descoberto):
+  CSeason::GetActiveTournament()->GetID() -> MCU_GetSingleTournamentIndexFromID
+  (0x3551e4, devolve -1 se nao achar) -> FETU_GetLeagueLogoSingleTourn
+  (0x1d6790, img, indice) que le data/fe/league/<nome>.png.
+  Tamanho fixo (K_LGW x K_LGH); o jogo nao informa o tamanho real do png.
+
+AJUSTES: tudo no inicio do intro.s (tabela K_...), em unidades 480x270:
+  K_MARG margem da barra | K_BARY/K_BARH topo/altura da barra
+  K_LOGOW/K_LOGOH escudo (W menor que H corrige a distorcao 3.33x2.26)
+  K_GAP espaco escudo-nome | K_TXTMID sobe/desce o texto | K_SCMAX escala
+  K_LGW/K_LGH/K_LGY logo da liga | K_BANDA opacidade da faixa (0 = sem)
+  Depois de mudar: rodar o comando abaixo de novo.
+
+COMANDO (extrair + montar + aplicar + enviar ao GitHub):
+  cd ~/FTS-15 && unzip -o "$(ls -t ~/storage/downloads/FTS15_etapa9_intro*.zip | head -1)" && bash FTS15-PATCH/build_intro.sh && bash FTS15-PATCH/patch_intro.sh && git status --short && git add -A && git commit -m "Tela de abertura: barra dividida + logo da liga" && git push
+  Sem git push (so testar): tire o final a partir de "&& git status".
+  Desfazer so a abertura: re-aplique o .orig e rode patch.sh do cartao.
+
+====
+COMANDOS UTEIS (r2) - sempre dentro de ~/FTS-15
+=====================================================================
+(A) Desmontar N instrucoes a partir de um endereco:
+    r2 -q -a arm -b 32 -e bin.relocs.apply=true -c "pd 300 @ 0xENDERECO" \
+       FTS15-RECURSOS/lib/armeabi-v7a/libFTS15.so \
+       > ~/storage/downloads/NOME.txt
+(B) Funcao inteira e quem a chama:
+    r2 -q -a arm -b 32 -e bin.relocs.apply=true \
+       -c "aaa; pdf @ 0xENDERECO; axt @ \$FB" LIB > ~/storage/downloads/X.txt
+(C) Aplicar um zip novo e enviar:
+    cd ~/FTS-15 && unzip -o "$(ls -t ~/storage/downloads/NOME*.zip | head -1)" \
+      && bash FTS15-PATCH/build.sh && bash FTS15-PATCH/patch.sh \
+      && git status --short && git add -A && git commit -m "MENSAGEM" && git push
+(D) Desfazer o patch no .so (volta ao original):
+    cp FTS15-RECURSOS/lib/armeabi-v7a/libFTS15.so.orig \
+       FTS15-RECURSOS/lib/armeabi-v7a/libFTS15.so
+
+
+=====================================================================
+HISTORICO DOS ZIPS JA ENVIADOS
+=====================================================================
+  FTS15_envio_b2.zip        mapa/asm da versao 6 do cartao de gol
+  FTS15_etapa1..6.zip       tentativas anteriores do cartao (python)
+  FTS15_etapa7_gol_anim.zip VERSAO ATUAL do cartao (sem python)
+  FTS15_etapa9_intro.zip    tela de abertura nova (intro.s)
+  intro_preview.txt         asm da CHudCompIntroPreview::Render
+  intro_overlay.txt         asm da CHudCompIntroOverlay::Render
+  liga_logo.txt             asm de FETU_GetLeagueLogo e afins
+=====================================================================
