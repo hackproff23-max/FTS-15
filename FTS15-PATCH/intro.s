@@ -252,6 +252,22 @@ Lstate2:
 Lnoexit:
   vmov.f32 s0, #1.0
   vstr s0, [sp, #L_P]
+  @ fase do vai-e-volta dos nomes longos (float 0..1 em L_TLV):
+  @ decorrido = (fim - inicio) - tempo_restante ; janela = (fim - inicio) - 89
+  ldr r0, [r4, #0xc]
+  ldr r1, [r4, #0x10]
+  sub r0, r0, r1
+  ldr r1, [sp, #L_TLV]
+  sub r1, r0, r1
+  sub r0, r0, #0x59
+  cmp r0, #1
+  movlt r0, #1
+  vmov s0, r1
+  vcvt.f32.s32 s0, s0
+  vmov s1, r0
+  vcvt.f32.s32 s1, s1
+  vdiv.f32 s0, s0, s1
+  vstr s0, [sp, #L_TLV]
 Lgotp:
   @ ---- progresso e fases
   vldr s0, [sp, #L_P]
@@ -464,31 +480,28 @@ Lexit:
   add sp, sp, #4
   pop {r4-r11, pc}
 
-SCR:                       @ r1=n letras, r6=buf -> r6=trecho a mostrar
+SCR:                       @ r1=n letras, r6=buf (UTF-16) -> r6=trecho a mostrar
   vldr s2, [sp, #L_SC]
   TL s3, K_CHARW
   vmul.f32 s2, s2, s3
   TL s3, K_AVAIL
   vdiv.f32 s3, s3, s2
   vcvt.s32.f32 s3, s3
-  vmov r2, s3
+  vmov r2, s3                  @ r2 = letras que cabem na janela
   cmp r2, #1
   movlt r2, #1
   cmp r1, r2
-  bxle lr
-  sub r3, r1, r2
+  bxle lr                      @ cabe: nao rola
+  sub r3, r1, r2               @ r3 = maximo de letras para rolar
   vmov s4, r3
   vcvt.f32.s32 s4, s4
-  vldr s5, [sp, #L_TLV]
-  vcvt.f32.s32 s5, s5
-  TL s6, K_TLMAX
-  vdiv.f32 s5, s5, s6
+  vldr s5, [sp, #L_TLV]        @ fase 0..1 (calculada no estado 2)
   CL01 s5
   vadd.f32 s5, s5, s5
   vmov.f32 s15, #1.0
   vsub.f32 s5, s5, s15
   vabs.f32 s5, s5
-  vsub.f32 s5, s15, s5
+  vsub.f32 s5, s15, s5         @ triangulo 0..1..0
   TL s6, K_HOLD
   vsub.f32 s5, s5, s6
   TL s6, K_INVSPAN
@@ -498,23 +511,11 @@ SCR:                       @ r1=n letras, r6=buf -> r6=trecho a mostrar
   TL s6, K_HALF
   vadd.f32 s5, s5, s6
   vcvt.s32.f32 s5, s5
-  vmov r0, s5
-  add r6, r6, r0
-  add r7, r6, r2
-1:
-  ldrb ip, [r6]
-  and ip, ip, #0xc0
-  cmp ip, #0x80
-  addeq r6, r6, #1
-  beq 1b
-2:
-  ldrb ip, [r7]
-  and ip, ip, #0xc0
-  cmp ip, #0x80
-  subeq r7, r7, #1
-  beq 2b
+  vmov r0, s5                  @ r0 = letras puladas
+  add r6, r6, r0, lsl #1       @ 2 bytes por letra
+  add r7, r6, r2, lsl #1       @ fim da janela
   mov ip, #0
-  strb ip, [r7]
+  strh ip, [r7]                @ termina a string
   bx lr
 
 boxcommon:                 @ r0..r3 = x,y,w,h ; ip = cor

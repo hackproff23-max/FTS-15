@@ -10,10 +10,12 @@
 @ XCTRL_tTouchButtonRects: desenho E area de toque usam esta tabela).
 @
 @ Cada retangulo = (VW + dx, VH + dy, W, H), em unidades do jogo.
-@ Original: W=2.0  H=4.0  A=(-6,-10)  B=(-8,-8)  C=(-4,-12)
+@ Unidades do jogo (tela logica 480x320). ATENCAO: o r2 mostra errado os
+@ imediatos de vmov.f32 (21.0 aparece como 2): nao conclua tamanhos pelo r2.
+@ Padrao correto: W=36 H=52  A=(-80,-94)  B=(-118,-64)  C=(-42,-124)
 @
 @ AJUSTES: mude os numeros abaixo e rode build_botoes.sh + patch_botoes.sh
-@   K_W / K_H   tamanho (manter H = 2 x W para o botao ficar redondo)
+@   K_W / K_H   tamanho (H = 1.44 x W deixa redondo na tela 1600x720)
 @   dx maior = vai para a direita | dy maior = vai para baixo
 @ ======================================================================
 
@@ -21,10 +23,10 @@ start:
   b Lcode
 .balign 4
 Ltab:
-  .float 2.73, 5.46         @ K_W, K_H
-  .float -5.96, -9.81       @ botao A: dx, dy
-  .float -8.51, -9.36       @ botao B: dx, dy
-  .float -4.60, -14.07      @ botao C: dx, dy
+  .float 36.0, 52.0         @ K_W, K_H  (circulo na tela 1600x720)
+  .float -80.0, -94.0       @ botao A: dx, dy
+  .float -118.0, -64.0      @ botao B: dx, dy
+  .float -42.0, -124.0      @ botao C: dx, dy
 Lcode:
   vmov.f32 s18, s0          @ largura da tela (preservada nas chamadas)
   vmov.f32 s19, s2          @ altura da tela
