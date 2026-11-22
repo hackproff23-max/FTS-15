@@ -116,6 +116,18 @@
   mov r1, #0
   bl SETCOL
 .endm
+.macro PRT base, k, slot, yslot, reg, colslot, aslot
+  vldr s2, [r5, #\base]
+  vldr s0, [sp, #\slot]
+  vldr s1, [r5, #\k]
+  vmla.f32 s2, s0, s1
+  vmov r0, s2
+  ldr r1, [sp, #\yslot]
+  add r2, sp, #\reg
+  ldr r3, [sp, #\colslot]
+  ldr r4, [sp, #\aslot]
+  bl dtxt
+.endm
 .macro SCALE v
   ldr r0, =\v
   mov r1, r0
@@ -150,9 +162,6 @@ Ls_inj:  .asciz "LESIONADO"
 Ls_mom:  .asciz "MELHOR EM CAMPO"
 Ls_og:   .asciz "GOL CONTRA"
 Ls_gool: .asciz "GOOOOOOOLLLL"
-Lp_pos:  .asciz "+8"
-Lp_yel:  .asciz "-2"
-Lp_red:  .asciz "-10"
 Lp_num:  .asciz "%d"
 .balign 4
 .word 0xc29d0000
@@ -162,21 +171,21 @@ Lp_num:  .asciz "%d"
 .word 0x423c0000
 .word 0x43110000
 .word 0x438c0000
-.word 0x40b33333
 .word 0x3fe66666
 .word 0x3fcccccd
 .word 0x3d888889
-.word 0x42200000
-.word 0x425c0000
+.word 0x42340000
+.word 0x42dc0000
 .word 0x00000000
 .word 0x41e33333
 .word 0x41180000
+.word 0x3fc00000
+.word 0x41fb3333
 .word 0x42280000
 .word 0xc2200000
-.word 0x3fc00000
-.word 0x42800000
 .word 0x41f00000
-.word 0x41fb3333
+.word 0x42800000
+.word 0x40b33333
 .word 0x42380000
 .word 0x42066666
 .word 0x4204cccd
@@ -198,7 +207,7 @@ Lcode:
   GETG r7, 4               @ &tGame
   GETG r4, 8               @ g (float): ponteiro
   ldr r4, [r4]
-  FADD r4, r4, 164
+  FADD r4, r4, 156
   str r4, [sp, #432]
   ldr r8, [r6, #0x2bc]     @ time
   ldr r9, [r6, #0x2b8]     @ jogador
@@ -326,20 +335,20 @@ Lshow:
   ldr r0, [sp, #460]
   vmov s9, r0
   vcvt.f32.s32 s9, s9
-  vldr s1, [r5, #168]
+  vldr s1, [r5, #160]
   vmul.f32 s1, s0, s1
-  vldr s4, [r5, #172]
+  vldr s4, [r5, #164]
   vadd.f32 s1, s1, s4      @ precisa p/ nome
-  vldr s3, [r5, #176]
+  vldr s3, [r5, #168]
   vmul.f32 s3, s2, s3
-  vldr s4, [r5, #180]
+  vldr s4, [r5, #172]
   vadd.f32 s3, s3, s4
   vadd.f32 s3, s3, s8      @ precisa p/ texto de baixo (+icone)
-  vldr s10, [r5, #168]
+  vldr s10, [r5, #160]
   vmul.f32 s10, s9, s10
-  vldr s4, [r5, #180]
+  vldr s4, [r5, #172]
   vadd.f32 s10, s10, s4    @ precisa p/ nome do time
-  vldr s5, [r5, #184]              @ s5 = largura W
+  vldr s5, [r5, #176]              @ s5 = largura W
   vcmp.f32 s1, s5
   vmrs APSR_nzcv, fpscr
   vmovgt.f32 s5, s1
@@ -349,50 +358,25 @@ Lshow:
   vcmp.f32 s10, s5
   vmrs APSR_nzcv, fpscr
   vmovgt.f32 s5, s10
-  vldr s6, [r5, #188]
+  vldr s6, [r5, #180]
   vcmp.f32 s5, s6
   vmrs APSR_nzcv, fpscr
   vmovgt.f32 s5, s6
   vstr s5, [sp, #448]
-  vldr s11, [r5, #192]             @ s11 = CW
-  vldr s12, [r5, #196]
-  @ escala do nome = min(NAME_SCALE, (W-margem-NAME_X)/(n*CW))
-  vldr s4, [r5, #172]
-  vsub.f32 s7, s5, s4
-  vmul.f32 s0, s0, s11
-  vdiv.f32 s7, s7, s0
-  vcmp.f32 s7, s12
-  vmrs APSR_nzcv, fpscr
-  vmovgt.f32 s7, s12
-  vstr s7, [sp, #452]
-  @ escala do nome do time
-  vldr s4, [r5, #180]
-  vsub.f32 s7, s5, s4
-  vmul.f32 s9, s9, s11
-  vdiv.f32 s7, s7, s9
-  vcmp.f32 s7, s12
-  vmrs APSR_nzcv, fpscr
-  vmovgt.f32 s7, s12
-  vstr s7, [sp, #464]
-  @ escala do texto de baixo
-  vldr s4, [r5, #180]
-  vsub.f32 s7, s5, s4
-  vsub.f32 s7, s7, s8
-  vmul.f32 s2, s2, s11
-  vdiv.f32 s7, s7, s2
-  vldr s1, [r5, #200]
-  vcmp.f32 s7, s1
-  vmrs APSR_nzcv, fpscr
-  vmovgt.f32 s7, s1
+  vldr s12, [r5, #184]
+  vstr s12, [sp, #452]    @ escalas fixas (o cartao cresce para caber o texto)
+  vstr s12, [sp, #464]
+  vldr s7, [r5, #188]
   vstr s7, [sp, #456]
   @ ---- animacao do gol (contador de frames em STAT+0x2b4; SetupPlayerStats zera)
   mov ip, #0
   vmov s14, ip
   vmov.f32 s15, #1.0
-  vstr s14, [sp, #468]
+  vstr s15, [sp, #468]
   vstr s14, [sp, #472]
-  vstr s15, [sp, #476]
+  vstr s14, [sp, #476]
   vstr s15, [sp, #492]
+  vstr s15, [sp, #552]
   cmp r11, #1
   bne Lnoanim
   ldrb r0, [r6, #0x2b4]
@@ -401,12 +385,12 @@ Lshow:
   cmp r0, #255
   addlo r1, r0, #1
   strblo r1, [r6, #0x2b4]
-  vldr s3, [r5, #204]
-  vldr s1, [r5, #208]
+  vldr s3, [r5, #192]
+  vldr s1, [r5, #196]
   vsub.f32 s2, s0, s1
   vmul.f32 s2, s2, s3
   CLAMP s2                 @ p: saida do nome (0..1)
-  vldr s1, [r5, #212]
+  vldr s1, [r5, #200]
   vsub.f32 s4, s0, s1
   vmul.f32 s4, s4, s3
   CLAMP s4                 @ q: entrada do time (0..1)
@@ -416,10 +400,12 @@ Lshow:
   vstr s4, [sp, #472]
   vstr s5, [sp, #476]
   vstr s6, [sp, #492]
+  vmul.f32 s7, s2, s6
+  vstr s7, [sp, #552]     @ alpha do GOOOL = p*(1-q)
 Lnoanim:
   @ ---- caixa do cartao
-  BOXSW 0x00000000, 216, 0x424c0000, 436
-  BOXCW 0x00000000, 220, 0x41b4cccd, 0xffe8e8e8
+  BOXSW 0x00000000, 204, 0x424c0000, 436
+  BOXCW 0x00000000, 208, 0x41b4cccd, 0xffe8e8e8
   @ ---- escudo
   movw r0, #0x10f8
   mla r0, r8, r0, r7
@@ -434,7 +420,7 @@ Lnoanim:
   str ip, [sp, #4]
   bl LOGO
   ldr r0, [sp, #432]
-  FADD r2, r0, 224
+  FADD r2, r0, 212
   mvn r1, #0
   str r1, [sp, #4]
   ldr r1, =0x42100000
@@ -443,37 +429,55 @@ Lnoanim:
   ldr r1, =0x4039999a
   add r0, sp, #0x120
   bl DRAW
-  @ ---- numero + nome (saem deslizando no gol)
+  @ ---- posicoes/cor dos textos
+  ldr r0, [sp, #432]
+  FADD r1, r0, 216
+  str r1, [sp, #556]
+  FADD r1, r0, 220
+  str r1, [sp, #560]
+  ldr ip, =0xff303030
+  str ip, [sp, #564]
   mov r0, #2
   bl SETFONT
-  SCALEV 452
-  ALPHACOL 440, 476
-  PRINTXV 228, 232, 468, 236, 0x90
-  PRINTXV 240, 232, 468, 236, 0x40
-  @ ---- nome do time (entra no gol)
-  cmp r11, #1
-  bne Lnoteamdraw
+  @ ---- faixa de cima: time (sai) -> numero + nome (entram)
   SCALEV 464
-  ALPHACOL 440, 472
-  PRINTXV 228, 244, 492, 236, 496
-Lnoteamdraw:
-  @ ---- texto de baixo
-  mov r0, #2
-  bl SETFONT
+  PRT 224, 228, 468, 556, 496, 440, 476
+  SCALEV 452
+  PRT 224, 232, 476, 556, 0x90, 440, 468
+  PRT 236, 232, 476, 556, 0x40, 440, 468
+  @ ---- faixa branca: nome (sai) -> GOOOL (entra/sai) -> time (entra)
   SCALEV 456
-  TXTCOL 0xff303030
-  PRINTAT 0, 0x42280000, 248, 0xc0
+  PRT 224, 228, 468, 560, 0x40, 564, 476
+  vldr s2, [r5, #224]
+  vldr s0, [sp, #476]
+  vldr s1, [r5, #232]
+  vmla.f32 s2, s0, s1
+  vldr s0, [sp, #472]
+  vldr s1, [r5, #228]
+  vmla.f32 s2, s0, s1
+  vmov r0, s2
+  ldr r1, [sp, #560]
+  add r2, sp, #0xc0
+  ldr r3, [sp, #564]
+  ldr r4, [sp, #552]
+  bl dtxt
+  PRT 224, 232, 492, 560, 496, 564, 472
   @ ---- icone ao lado do texto (bola no gol, cartao amarelo/vermelho)
   sub r0, r11, #1
   cmp r0, #2
   bhi Lend
+  vldr s0, [sp, #552]
+  vmov.f32 s1, #0.5
+  vcmp.f32 s0, s1
+  vmrs APSR_nzcv, fpscr
+  blt Lend
   vmov s0, r9
   vcvt.f32.s32 s0, s0
   vldr s1, [sp, #456]
   vmul.f32 s0, s0, s1
-  vldr s1, [r5, #192]
+  vldr s1, [r5, #240]
   vmul.f32 s0, s0, s1
-  vldr s1, [r5, #252]
+  vldr s1, [r5, #244]
   vadd.f32 s0, s0, s1
   vstr s0, [sp, #484]
   cmp r11, #1
@@ -484,15 +488,15 @@ Lnoteamdraw:
   str ip, [sp, #488]
   ldr ip, =0x3fc00000
   str ip, [sp, #480]
-  BOXR 216, 256, 0x41100000, 0x41466666
+  BOXR 204, 248, 0x41100000, 0x41466666
   b Lend
 Lball:
   SETRC 0xff000000, 0x40d00000
-  BOXR 216, 260, 0x41500000, 0x41500000
+  BOXR 204, 252, 0x41500000, 0x41500000
   SETRC 0xffffffff, 0x40b00000
-  BOXR 264, 268, 0x41300000, 0x41300000
+  BOXR 256, 260, 0x41300000, 0x41300000
   SETRC 0xff000000, 0x40133333
-  BOXR 272, 276, 0x40933333, 0x40933333
+  BOXR 264, 268, 0x40933333, 0x40933333
 Lend:
   mov r0, #1
   bl SETFONT               @ restaura fonte/escala padrao (como o original)
@@ -517,6 +521,18 @@ boxround:                  @ r0..r3 = x,y,w,h ; cor em [CLR], raio em [RS]
   ldr ip, =0xff000000
   str ip, [sp, #24]
   b RB
+
+dtxt:                      @ r0=x r1=y r2=texto r3=cor r4=alpha
+  push {r0-r2, lr}
+  mov r0, r3
+  mov r1, r4
+  bl ALPHA
+  mov r1, #0
+  bl SETCOL
+  mov r0, #0
+  bl ALIGN
+  pop {r0-r2, lr}
+  b PRINT
 
 boxcommon:                 @ r0..r3 = x,y,w,h ; ip = cor
   str ip, [sp]
@@ -552,24 +568,18 @@ tramp_setup:               @ substitui bl SetupPlayerStats (comemoracao/faixa)
   pop {r4, pc}
 
 tramp_goal:                @ substitui bl FTSstring no ramo de GOL (nao contra)
-  push {r0, lr}
-  adr r1, TgA
-  ldr r2, [r1]
-  add r1, r1, r2
-  ldr r1, [r1]
-  mov r2, #1
-  strb r2, [r1, #0x2b6]    @ pendente = gol
-  pop {r0, lr}
-  b S_FTSSTR
-
+  mov r3, #0x2b6           @ pendente = gol
+  b Lmarca
 tramp_own:                 @ substitui bl FTSstring(IG_OWNGOAL): marca gol contra
+  mov r3, #0x2b7
+Lmarca:
   push {r0, lr}
   adr r1, TgA
   ldr r2, [r1]
   add r1, r1, r2
   ldr r1, [r1]
   mov r2, #1
-  strb r2, [r1, #0x2b7]
+  strb r2, [r1, r3]
   pop {r0, lr}
   b S_FTSSTR
 
