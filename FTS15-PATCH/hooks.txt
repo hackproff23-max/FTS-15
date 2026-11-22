@@ -1,6 +1,6 @@
 00283474 T start
-00283a40 T tramp_card
-00283a1c T tramp_goal
-00283ac0 T tramp_msg
-00283a9c T tramp_own
-002839f0 T tramp_setup
+00283ed8 T tramp_card
+00283db4 T tramp_goal
+00283f34 T tramp_msg
+00283dd8 T tramp_own
+00283d88 T tramp_setup
