@@ -150,17 +150,22 @@ Lcode:
   @ ---- nome
   mov r0, #2
   bl SETFONT
-  SCALE 0x40000000
+  SCALE 0x3fe66666
   ldr r0, [sp, #440]
   ldr r1, =0x3f800000
   bl ALPHA
   mov r1, #0
   bl SETCOL
+  ldrb r2, [r10, #0x55]
+  add r1, r5, #(Lp_num - Ldata)
+  add r0, sp, #0x90
+  bl SPRINTF
+  PRINTAT 0, 0x42280000, 0x3fc00000, 0x90
   add r0, sp, #0x40
   add r1, r10, #0x24
   mov r2, #0x11
   bl CAP
-  PRINTAT 0, 0x42280000, 0x3fc00000, 0x40
+  PRINTAT 0, 0x42800000, 0x3fc00000, 0x40
   @ ---- texto de baixo
   mov r0, #2
   bl SETFONT
@@ -201,36 +206,7 @@ Lfmt:
   add r0, sp, #0xc0
   bl SPRINTF
 Lshow:
-  PRINTAT 1, 0x42a80000, 0x41fb3333, 0xc0
-  @ ---- cartola + camisa (so gol e cartao)
-  cmp r11, #0
-  beq Lend
-  BOXC 0x42f00000, 0xc1980000, 0x41c80000, 0x41980000, 0xffffffff
-  BOXC 0x42f70000, 0xc1880000, 0x41100000, 0x41000000, 0xff1a1a1a
-  BOXC 0x42f70000, 0xc1280000, 0x41100000, 0x40200000, 0xfff08020
-  BOXC 0x42f30000, 0xc1000000, 0x41500000, 0x40200000, 0xff1a1a1a
-  mov r0, #2
-  bl SETFONT
-  SCALE 0x3fc00000
-  TXTCOL 0xff202020
-  add r1, r5, #(Lp_pos - Ldata)
-  cmp r11, #2
-  addeq r1, r5, #(Lp_yel - Ldata)
-  cmp r11, #3
-  addeq r1, r5, #(Lp_red - Ldata)
-  add r0, sp, #0x90
-  bl SPRINTF
-  PRINTAT 1, 0x43090000, 0xc1880000, 0x90
-  BOXC 0x42f80000, 0x3f99999a, 0x41880000, 0x41d00000, 0xfff4f4f4
-  mov r0, #2
-  bl SETFONT
-  SCALE 0x3fc00000
-  TXTCOL 0xff202020
-  ldrb r2, [r10, #0x55]
-  add r1, r5, #(Lp_num - Ldata)
-  add r0, sp, #0x90
-  bl SPRINTF
-  PRINTAT 1, 0x43048000, 0x40f00000, 0x90
+  PRINTAT 0, 0x42500000, 0x41fb3333, 0xc0
 Lend:
   mov r0, #1
   bl SETFONT               @ restaura fonte/escala padrao (como o original)

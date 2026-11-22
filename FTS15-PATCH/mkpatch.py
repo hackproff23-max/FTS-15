@@ -19,7 +19,7 @@ def bl(a, t):
     return struct.pack("<I", 0xEB000000 | (((t - (a + 8)) >> 2) & 0xFFFFFF))
 d = bytearray(open(so, "rb").read())
 first = bytes(d[RENDER:RENDER+4])
-if first not in (bytes.fromhex("f04f2de9"), new[:4]):
+if first != bytes.fromhex("f04f2de9") and first[3] != 0xEA:
     sys.exit("ERRO: bytes inesperados em 0x283474; .so diferente do esperado. Nada foi alterado.")
 for a, orig, t in HOOKS:
     cur = bytes(d[a:a+4])

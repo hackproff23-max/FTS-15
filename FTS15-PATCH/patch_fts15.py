@@ -9,15 +9,15 @@ new = open(os.path.join(here, "card.bin"), "rb").read()
 RENDER = 0x283474
 # (endereco do bl, bytes originais do bl, destino novo)
 HOOKS = [
-  (0x36c1c8, "255ff7eb", 0x283a54),   # SetupPlayerStats (faixa da comemoracao)
-  (0x36c2d8, "0265f7eb", 0x283aa4),    # GameMessageSet dos cartoes
-  (0x36c34c, "fe4bf7eb", 0x283a80),    # FTSstring do ramo de gol
+  (0x36c1c8, "255ff7eb", 0x283888),   # SetupPlayerStats (faixa da comemoracao)
+  (0x36c2d8, "0265f7eb", 0x2838d8),    # GameMessageSet dos cartoes
+  (0x36c34c, "fe4bf7eb", 0x2838b4),    # FTSstring do ramo de gol
 ]
 def bl(a, t):
     return struct.pack("<I", 0xEB000000 | (((t - (a + 8)) >> 2) & 0xFFFFFF))
 d = bytearray(open(so, "rb").read())
 first = bytes(d[RENDER:RENDER+4])
-if first not in (bytes.fromhex("f04f2de9"), new[:4]):
+if first != bytes.fromhex("f04f2de9") and first[3] != 0xEA:
     sys.exit("ERRO: bytes inesperados em 0x283474; .so diferente do esperado. Nada foi alterado.")
 for a, orig, t in HOOKS:
     cur = bytes(d[a:a+4])

@@ -165,6 +165,11 @@ Lcode:
   bl ALPHA
   mov r1, #0
   bl SETCOL
+  ldrb r2, [r10, #0x55]
+  add r1, r5, #(Lp_num - Ldata)
+  add r0, sp, #0x90
+  bl SPRINTF
+  PRINTAT 0, {f(c['NUM_X'])}, {f(c['NAME_DY'])}, 0x90
   add r0, sp, #0x40
   add r1, r10, #0x24
   mov r2, #0x11
@@ -210,36 +215,7 @@ Lfmt:
   add r0, sp, #0xc0
   bl SPRINTF
 Lshow:
-  PRINTAT 1, {f(c['STAT_CX'])}, {f(c['TOP_H']+c['STAT_DY'])}, 0xc0
-  @ ---- cartola + camisa (so gol e cartao)
-  cmp r11, #0
-  beq Lend
-  BOXC {f(c['HAT_X'])}, {f(-c['HAT_H'])}, {f(c['HAT_W'])}, {f(c['HAT_H'])}, 0xffffffff
-  BOXC {f(c['HAT_X']+3.5)}, {f(-c['HAT_H']+2.0)}, {f(9.0)}, {f(8.0)}, 0xff1a1a1a
-  BOXC {f(c['HAT_X']+3.5)}, {f(-c['HAT_H']+8.5)}, {f(9.0)}, {f(2.5)}, 0xfff08020
-  BOXC {f(c['HAT_X']+1.5)}, {f(-c['HAT_H']+11.0)}, {f(13.0)}, {f(2.5)}, 0xff1a1a1a
-  mov r0, #2
-  bl SETFONT
-  SCALE {f(c['PTS_SCALE'])}
-  TXTCOL 0xff202020
-  add r1, r5, #(Lp_pos - Ldata)
-  cmp r11, #2
-  addeq r1, r5, #(Lp_yel - Ldata)
-  cmp r11, #3
-  addeq r1, r5, #(Lp_red - Ldata)
-  add r0, sp, #0x90
-  bl SPRINTF
-  PRINTAT 1, {f(c['PTS_CX'])}, {f(c['PTS_DY'])}, 0x90
-  BOXC {f(c['SHIRT_X'])}, {f(c['SHIRT_DY'])}, {f(c['SHIRT_W'])}, {f(c['SHIRT_H'])}, 0xfff4f4f4
-  mov r0, #2
-  bl SETFONT
-  SCALE {f(c['NUM_SCALE'])}
-  TXTCOL 0xff202020
-  ldrb r2, [r10, #0x55]
-  add r1, r5, #(Lp_num - Ldata)
-  add r0, sp, #0x90
-  bl SPRINTF
-  PRINTAT 1, {f(c['NUM_CX'])}, {f(c['NUM_DY'])}, 0x90
+  PRINTAT 0, {f(c['STAT_X'])}, {f(c['TOP_H']+c['STAT_DY'])}, 0xc0
 Lend:
   mov r0, #1
   bl SETFONT               @ restaura fonte/escala padrao (como o original)
