@@ -37,6 +37,12 @@
 .equ O_NH,   336
 .equ O_NA,   848
 
+@ slots reaproveitados depois que a barra ja foi desenhada
+.equ S_TW,   L_TMP   @ largura do nome
+.equ S_WX0,  L_GR    @ inicio da janela
+.equ S_WX1,  L_A     @ fim da janela
+.equ S_OFF,  L_HG    @ x do texto
+
 .macro GETG rd, lab
   add \rd, r5, #(\lab - Ldata)
   ldr ip, [\rd]
@@ -116,35 +122,12 @@
 .endm
 
 @ desenha o nome (buffer ja preenchido por PREP; escala comum em L_SC)
-.macro NAME colslot, align, xslot, buf, nslot
+.macro NAME colslot, side, buf, nslot
   SPADDR r6, \buf
-  ldr r1, [sp, #\nslot]
-  bl SCR
-  mov r0, #2
-  bl SETFONT
-  ldr r0, [sp, #L_SC]
-  mov r1, r0
-  bl S_SCALE
-  ldr r0, [sp, #\colslot]
-  ldr r1, [sp, #L_T]
-  bl ALPHA
-  mov r1, #0
-  bl SETCOL
-  mov r0, #\align
-  bl ALIGN
-  vldr s0, [sp, #L_YB]
-  TL s1, K_BARH
-  TL s2, K_HALF
-  vmul.f32 s1, s1, s2
-  vadd.f32 s0, s0, s1
-  TL s1, K_TXTMID
-  vldr s2, [sp, #L_SC]
-  vmul.f32 s1, s1, s2
-  vsub.f32 s0, s0, s1
-  vmov r1, s0
-  ldr r0, [sp, #\xslot]
-  mov r2, r6
-  bl PRINT
+  mov r7, #\side
+  mov r8, #\colslot
+  mov r9, #\nslot
+  bl NMDRAW
 .endm
 
 @ escudo: idreg=id do time, xslot=x
@@ -182,6 +165,8 @@ Ldata:
 Lg_t: .word S_T - .
 Lg_y: .word S_Y - .
 Lg_w: .word S_W - .
+Lg_hw: .word S_HW - .
+Lg_hh: .word S_HH - .
 K_HALF:   .float 0.5
 K_ONE:    .float 1.0
 K_MARG:   .float 42.9      @ margem da barra ate a borda da tela
@@ -211,6 +196,10 @@ K_SLIDE:  .float 110.0     @ distancia inicial do deslize lateral
 K_HOLD:   .float 0.2       @ parada nas pontas do vai-e-volta (maior = para mais)
 K_INVSPAN:.float 1.666667  @ 1/(1-2*HOLD)
 K_TLMAX:  .float 90.0      @ duracao (ticks) de um vai-e-volta completo
+K_CLIPPAD:.float 24.0      @ folga vertical do recorte do nome (acima/abaixo da barra)
+K_CYC:    .float 1.0       @ quantos vai-e-volta durante a exibicao
+K_PLO:    .float 0.5       @ largura medida so vale entre PLO e PHI x estimativa
+K_PHI:    .float 2.2
 K_255:    .float 255.0
 K_DBG:    .float 0.0       @ 1 = quadradinhos de diagnostico acima da barra (0 desliga)
 K_DBGSZ:  .float 8.0
@@ -445,32 +434,9 @@ Lnobar:
   vadd.f32 s0, s0, s6
   vstr s0, [sp, #L_NX]
   SHIELD r10, L_NX
-  @ nome da casa: x = marg + logow + gap - desl (alinhado a esquerda)
-  vldr s6, [sp, #L_U3]
-  TL s7, K_SLIDE
-  vmul.f32 s6, s6, s7
-  TL s0, K_MARG
-  TL s1, K_LOGOW
-  vadd.f32 s0, s0, s1
-  TL s1, K_GAP
-  vadd.f32 s0, s0, s1
-  vsub.f32 s0, s0, s6
-  vstr s0, [sp, #L_NX]
-  NAME L_CTXH, 0, L_NX, O_NH, L_N0
-  @ nome do visitante: x = W - marg - logow - gap + desl (alinhado a direita)
-  vldr s6, [sp, #L_U3]
-  TL s7, K_SLIDE
-  vmul.f32 s6, s6, s7
-  vldr s0, [sp, #L_W]
-  TL s1, K_MARG
-  vsub.f32 s0, s0, s1
-  TL s1, K_LOGOW
-  vsub.f32 s0, s0, s1
-  TL s1, K_GAP
-  vsub.f32 s0, s0, s1
-  vadd.f32 s0, s0, s6
-  vstr s0, [sp, #L_NX]
-  NAME L_CTXA, 1, L_NX, O_NA, L_SC2
+  @ nomes: janela, rolagem suave e recorte ficam em NMDRAW
+  NAME L_CTXH, 0, O_NH, L_N0
+  NAME L_CTXA, 1, O_NA, L_SC2
 Lend:
   mov r0, #1
   bl SETFONT
@@ -480,23 +446,81 @@ Lexit:
   add sp, sp, #4
   pop {r4-r11, pc}
 
-SCR:                       @ r1=n letras, r6=buf (UTF-16) -> r6=trecho a mostrar
+NMDRAW:                    @ r6=buf r7=lado(0 casa,1 visitante) r8=slot cor r9=slot n letras
+  mov r11, lr
+  mov r0, #2
+  bl SETFONT
+  ldr r0, [sp, #L_SC]
+  mov r1, r0
+  bl S_SCALE
+  @ ---- largura do nome (medida pelo jogo; se vier estranha usa estimativa)
+  mov r0, r6
+  bl TXTW
+  vmov s0, r0
+  vmov.f32 s1, #1.0
+  vcmp.f32 s0, s1
+  vmrs APSR_nzcv, fpscr
+  bge 1f
+  vmov s0, r0
+  vcvt.f32.s32 s0, s0         @ veio como inteiro
+1:
+  ldr r0, [sp, r9]
+  vmov s1, r0
+  vcvt.f32.s32 s1, s1
+  TL s2, K_CHARW
+  vmul.f32 s1, s1, s2
   vldr s2, [sp, #L_SC]
-  TL s3, K_CHARW
-  vmul.f32 s2, s2, s3
+  vmul.f32 s1, s1, s2          @ s1 = estimativa
+  TL s2, K_PLO
+  vmul.f32 s2, s2, s1
+  vcmp.f32 s0, s2
+  vmrs APSR_nzcv, fpscr
+  vmovlt.f32 s0, s1
+  TL s2, K_PHI
+  vmul.f32 s2, s2, s1
+  vcmp.f32 s0, s2
+  vmrs APSR_nzcv, fpscr
+  vmovgt.f32 s0, s1
+  vstr s0, [sp, #S_TW]
+  @ ---- janela do nome (acompanha o deslize de entrada)
+  vldr s6, [sp, #L_U3]
+  TL s7, K_SLIDE
+  vmul.f32 s6, s6, s7          @ deslocamento restante
+  TL s2, K_MARG
+  TL s3, K_LOGOW
+  vadd.f32 s2, s2, s3
+  TL s3, K_GAP
+  vadd.f32 s2, s2, s3          @ marg + logow + gap
+  cmp r7, #0
+  bne 2f
+  vsub.f32 s2, s2, s6          @ casa: inicio da janela
+  b 3f
+2:
+  vldr s4, [sp, #L_W]
+  vsub.f32 s4, s4, s2
   TL s3, K_AVAIL
-  vdiv.f32 s3, s3, s2
-  vcvt.s32.f32 s3, s3
-  vmov r2, s3                  @ r2 = letras que cabem na janela
-  cmp r2, #1
-  movlt r2, #1
-  cmp r1, r2
-  bxle lr                      @ cabe: nao rola
-  sub r3, r1, r2               @ r3 = maximo de letras para rolar
-  vmov s4, r3
-  vcvt.f32.s32 s4, s4
-  vldr s5, [sp, #L_TLV]        @ fase 0..1 (calculada no estado 2)
-  CL01 s5
+  vsub.f32 s4, s4, s3
+  vadd.f32 s2, s4, s6          @ visitante: inicio da janela
+3:
+  TL s3, K_AVAIL
+  vadd.f32 s3, s2, s3
+  vstr s2, [sp, #S_WX0]
+  vstr s3, [sp, #S_WX1]
+  @ ---- precisa rolar?
+  vldr s0, [sp, #S_TW]
+  TL s1, K_AVAIL
+  vsub.f32 s4, s0, s1          @ excesso
+  mov r10, #0
+  vcmp.f32 s4, #0
+  vmrs APSR_nzcv, fpscr
+  ble Lnoscr
+  @ fase 0..1 -> triangulo -> parada nas pontas -> suavizacao (smoothstep)
+  vldr s5, [sp, #L_TLV]
+  TL s6, K_CYC
+  vmul.f32 s5, s5, s6
+  vcvt.s32.f32 s7, s5
+  vcvt.f32.s32 s7, s7
+  vsub.f32 s5, s5, s7          @ fracao do ciclo
   vadd.f32 s5, s5, s5
   vmov.f32 s15, #1.0
   vsub.f32 s5, s5, s15
@@ -507,16 +531,86 @@ SCR:                       @ r1=n letras, r6=buf (UTF-16) -> r6=trecho a mostrar
   TL s6, K_INVSPAN
   vmul.f32 s5, s5, s6
   CL01 s5
-  vmul.f32 s5, s5, s4
-  TL s6, K_HALF
-  vadd.f32 s5, s5, s6
-  vcvt.s32.f32 s5, s5
-  vmov r0, s5                  @ r0 = letras puladas
-  add r6, r6, r0, lsl #1       @ 2 bytes por letra
-  add r7, r6, r2, lsl #1       @ fim da janela
-  mov ip, #0
-  strh ip, [r7]                @ termina a string
-  bx lr
+  vmul.f32 s6, s5, s5
+  vmov.f32 s7, #2.0
+  vmul.f32 s7, s7, s5
+  vmov.f32 s14, #3.0
+  vsub.f32 s7, s14, s7
+  vmul.f32 s5, s6, s7          @ 3u^2 - 2u^3
+  vmul.f32 s5, s5, s4          @ deslocamento = fase x excesso
+  vldr s2, [sp, #S_WX0]
+  vsub.f32 s2, s2, s5
+  vstr s2, [sp, #S_OFF]
+  mov r10, #1
+  b Lpos
+Lnoscr:
+  cmp r7, #0
+  vldr s2, [sp, #S_WX0]
+  vldrne s2, [sp, #S_WX1]
+  vstr s2, [sp, #S_OFF]
+Lpos:
+  @ ---- cor e alinhamento
+  ldr r0, [sp, r8]
+  ldr r1, [sp, #L_T]
+  bl ALPHA
+  mov r1, #0
+  bl SETCOL
+  cmp r10, #0
+  movne r0, #0                 @ rolando: sempre alinhado a esquerda
+  moveq r0, r7
+  bl ALIGN
+  @ ---- recorte (scissor) so quando rola
+  cmp r10, #0
+  beq Lnoclip
+  GETG r0, Lg_hw
+  vldr s8, [r0]
+  vldr s9, [sp, #L_W]
+  vdiv.f32 s8, s8, s9          @ pixels por unidade em x
+  GETG r0, Lg_hh
+  vldr s10, [r0]
+  vldr s11, [sp, #L_G]
+  vdiv.f32 s10, s10, s11       @ pixels por unidade em y
+  vldr s0, [sp, #S_WX0]
+  vmul.f32 s0, s0, s8
+  vcvt.s32.f32 s0, s0          @ esquerda
+  vldr s2, [sp, #S_WX1]
+  vmul.f32 s2, s2, s8
+  vcvt.s32.f32 s2, s2          @ direita
+  vldr s1, [sp, #L_YB]
+  TL s12, K_CLIPPAD
+  vsub.f32 s1, s1, s12
+  vmul.f32 s1, s1, s10
+  vcvt.s32.f32 s1, s1          @ topo
+  vldr s3, [sp, #L_YB]
+  TL s12, K_BARH
+  vadd.f32 s3, s3, s12
+  TL s12, K_CLIPPAD
+  vadd.f32 s3, s3, s12
+  vmul.f32 s3, s3, s10
+  vcvt.s32.f32 s3, s3          @ base
+  vmov r0, s0
+  vmov r1, s1
+  vmov r2, s2
+  vmov r3, s3
+  bl SCISS
+Lnoclip:
+  @ ---- y do texto e desenho
+  vldr s0, [sp, #L_YB]
+  TL s1, K_BARH
+  TL s2, K_HALF
+  vmul.f32 s1, s1, s2
+  vadd.f32 s0, s0, s1
+  TL s1, K_TXTMID
+  vldr s2, [sp, #L_SC]
+  vmul.f32 s1, s1, s2
+  vsub.f32 s0, s0, s1
+  vmov r1, s0
+  ldr r0, [sp, #S_OFF]
+  mov r2, r6
+  bl PRINT
+  cmp r10, #0
+  blne SCISSOFF
+  bx r11
 
 boxcommon:                 @ r0..r3 = x,y,w,h ; ip = cor
   str ip, [sp]

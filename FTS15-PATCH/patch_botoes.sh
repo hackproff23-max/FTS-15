@@ -18,3 +18,5 @@ N=$(( (END-ADDR-SZ)/4 ))
 i=0
 while [ $i -lt $N ]; do printf '\x00\xf0\x20\xe3'; i=$((i+1)); done | dd of="$SO" bs=1 seek=$((ADDR+SZ)) conv=notrunc status=none
 echo "OK: botoes A/B/C gravados em $SO"
+echo "Tabela gravada (W H / A / B / C):"
+od -An -tf4 -j4 -N32 botoes.bin

@@ -12,7 +12,8 @@
 @ Cada retangulo = (VW + dx, VH + dy, W, H), em unidades do jogo.
 @ Unidades do jogo (tela logica 480x320). ATENCAO: o r2 mostra errado os
 @ imediatos de vmov.f32 (21.0 aparece como 2): nao conclua tamanhos pelo r2.
-@ Padrao correto: W=36 H=52  A=(-80,-94)  B=(-118,-64)  C=(-42,-124)
+@ v13: tamanho = visivel(143px)/0.874 (o png tem margem); centros = captura
+@   A=(-78.75,-90.0)  B=(-127.5,-83.8)  C=(-53.0,-154.7)
 @
 @ AJUSTES: mude os numeros abaixo e rode build_botoes.sh + patch_botoes.sh
 @   K_W / K_H   tamanho (H = 1.44 x W deixa redondo na tela 1600x720)
@@ -23,10 +24,10 @@ start:
   b Lcode
 .balign 4
 Ltab:
-  .float 36.0, 52.0         @ K_W, K_H  (circulo na tela 1600x720)
-  .float -80.0, -94.0       @ botao A: dx, dy
-  .float -118.0, -64.0      @ botao B: dx, dy
-  .float -42.0, -124.0      @ botao C: dx, dy
+  .float 49.2, 72.9         @ K_W, K_H  (circulo visivel ~143px)
+  .float -78.75, -90.0      @ botao A: dx, dy
+  .float -127.5, -83.8      @ botao B: dx, dy
+  .float -53.0, -154.7      @ botao C: dx, dy
 Lcode:
   vmov.f32 s18, s0          @ largura da tela (preservada nas chamadas)
   vmov.f32 s19, s2          @ altura da tela

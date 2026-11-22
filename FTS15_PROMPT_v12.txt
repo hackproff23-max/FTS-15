@@ -1,0 +1,109 @@
+=====================================================================
+FTS15 - PROMPT + RESUMO GERAL (versao 11, 22/11/2026)
+COMO USAR EM QUALQUER CONTA: cole este txt no chat, anexe os zips/txt
+que eu citar aqui e escreva "continue de onde parou".
+Responder SEMPRE em portugues.
+=====================================================================
+
+REGRAS DO USUARIO
+  - Entregar tudo em ZIP (nome alteracoes*.zip) + este txt de resumo.
+  - NAO usar python no Termux (so shell: build/patch .sh).
+  - Projeto: ~/FTS-15 (repo hackproff23-max/FTS-15, conector GitHub).
+  - Lib: FTS15-RECURSOS/lib/armeabi-v7a/libFTS15.so (ARM 32 bits, so este
+    ABI e patchado; o x86 nao).  Aparelho de teste: Redmi 13C 1600x720.
+  - Termux tem: radare2 (r2), clang, ld.lld, llvm-objcopy.
+  - Claude NAO roda o jogo nem monta ARM: o usuario monta (clang) e testa;
+    Claude le os .txt do r2 e os prints.  Se o build der erro, mandar a
+    saida para o Claude.
+  - Comando padrao de entrega (extrai, monta, aplica, envia):
+    cd ~/FTS-15 && unzip -o "$(ls -t ~/storage/downloads/alteracoes*.zip | head -1)" > /dev/null && bash FTS15-PATCH/build_botoes.sh && bash FTS15-PATCH/patch_botoes.sh && bash FTS15-PATCH/build_intro.sh && bash FTS15-PATCH/patch_intro.sh && git add -A && git commit -m "mensagem" && git push
+    (para so testar, corte a partir de "&& git add")
+  - Desfazer tudo: cp FTS15-RECURSOS/lib/armeabi-v7a/libFTS15.so.orig
+    FTS15-RECURSOS/lib/armeabi-v7a/libFTS15.so  (depois reaplicar o que
+    quiser manter: build.sh+patch.sh do cartao, etc.)
+
+LICOES TECNICAS (IMPORTANTES - evitam os erros ja cometidos)
+  1) O r2 MOSTRA ERRADO os imediatos de "vmov.f32 sN, #valor": 21.0 sai
+     "2", 19.0 sai "1", 31.0 sai "3", 15.0 sai "1", 26.0 sai "2".
+     Foi isso que fez a etapa13 achar que os botoes tinham tamanho 2x4 e
+     encolhe-los ate sumirem.  Nunca concluir tamanhos pelo r2 em vmov.f32
+     com imediato; decodificar o byte (imm8) ou olhar as constantes.
+  2) Unidades do jogo (CContext::s_fViewportWidth/Height): tela LOGICA
+     480 x 320, esticada para a tela real (na 1600x720: 3.33 px/unidade
+     na horizontal e 2.25 na vertical).  Circulo na tela = elipse nas
+     unidades (largura 36, altura 52 = ~120x117 px).
+  3) wchar_t do jogo e de 16 bits (UTF-16): xstrlen conta unidades de 16
+     bits.  Qualquer conta de ponteiro em nomes usa 2 bytes por letra
+     (strh para terminar a string).  Era o bug que cortava "BIRMINGHAM CITY"
+     em "BIRMIN" (janela pela metade).
+  4) CHudComponent: +8 estado (0..3), +0xc tick final, +0x10 tick inicial.
+     GetTimeLeft = final - tick (0 se final<1).  Estado 2 dura 360 ticks
+     por padrao; a CHudCompIntroPreview::Render (nossa) inicia a saida
+     (estado 3, 90 ticks) quando o tempo restante <= 89.  Fase de qualquer
+     animacao do estado 2 = (total - restante) / (total - 89).
+  5) Botoes A/B/C: CHudCompButtons::Render (0x27d840) desenha a partir da
+     tabela XCTRL_tTouchButtonRects (x,y,w,h; 16 bytes por botao; A,B,C),
+     a MESMA tabela vale para o toque.  Preenchida em XCTRL_TouchInit
+     (0x1a5f74), trecho 0x1a6038..0x1a60d7.
+
+STATUS POR FUNCAO
+  A) BOTOES A/B/C  (etapa14 corrige o sumico)
+     - Lib ja tem (patches antigos): Render dos botoes usando os 3 retangulos
+       (altura = rect.h), recortes 128x128 em buttons_all.png:
+       A (256,0)  B (256,128)  C (384,0); botao central do joystick com
+       recorte u=122; base do joystick sem emenda (colunas 119/120 cheias).
+     - botoes.s (zip) agora grava as medidas CERTAS:
+       W=36 H=52 | A(-80,-94) B(-118,-64) C(-42,-124)  (em relacao a VW,VH)
+       = diagonal da referencia: C em cima a direita, A no meio, B embaixo.
+     - AJUSTE: mude os numeros da tabela Ltab no botoes.s e rode
+       build_botoes.sh + patch_botoes.sh (pode rodar varias vezes).
+  B) TELA DE ABERTURA (intro.s, CHudCompIntroPreview::Render 0x27f104)
+     - barra unica dividida (cor da casa | visitante), escudos redondos,
+       nomes grandes de tamanho igual (K_SCMAX 2.7), logo da liga so em
+       modo torneio (amistoso = sem logo).
+     - CORRECAO etapa14: nomes longos agora ROLAM de um lado para o outro
+       (vai-e-volta) durante toda a exibicao, mostrando o nome inteiro:
+       fase pelo tempo decorrido do estado 2 e contas em UTF-16.
+       Janela = K_AVAIL/(K_SCMAX*K_CHARW) = 12 letras; "BIRMINGHAM CITY"
+       (15) rola 3 letras.  K_HOLD = parada nas pontas (0.2).
+     - AJUSTES no inicio do intro.s (tabela K_...): K_AVAIL (janela, maior
+       = mais letras visiveis), K_SCMAX (tamanho), K_HOLD, K_CHARW.
+  C) CARTAO DE GOL (card.s / build.sh / patch.sh / syms.txt)
+     - animacao time/jogador/GOOOL; ja aplicado; independente dos demais.
+  D) PENDENTE / OPCIONAL
+     - Seletor de times estilo 2 paineis com setas: NAO feito (precisa
+       codigo novo; a tela usa CFETeamSelectGrid).  Alternativa segura:
+       so trocar o visual (roxo, fundo de rede) por imagens.
+     - Logo da liga some em amistoso (so aparece em torneio).
+
+COMO CONFERIR DEPOIS DE APLICAR
+  1) botoes: abrir partida; devem aparecer C/A/B em diagonal na direita.
+  2) abertura: com nome longo (ex.: BIRMINGHAM CITY) o nome desliza ate o
+     fim e volta, parando nas pontas.  Se nao rolar, mandar print e o
+     tempo aproximado em que aparece.
+  3) mandar print das duas telas.
+
+ARQUIVOS DO ZIP (pasta FTS15-PATCH/)
+  botoes.s build_botoes.sh patch_botoes.sh      (botoes A/B/C)
+  intro.s intro_syms.txt build_intro.sh patch_intro.sh  (abertura)
+  card.s build.sh patch.sh syms.txt             (cartao de gol)
+
+=====================================================================
+ATUALIZACAO v12 (22/11/2026)
+=====================================================================
+BOTOES A/B/C - medidas tiradas da captura certa do usuario (1600x720):
+  circulos de ~143 px.  Unidades 480x320 (3.333 px/un na horizontal,
+  2.25 px/un na vertical):  W=43  H=63.7
+  A=(-75.6,-85.3)  B=(-124.5,-79.1)  C=(-50.1,-150.2)  (relativo a VW,VH)
+  (original do jogo, lido do codigo: 38x52, A(-80,-86) B(-118,-48) C(-42,-124))
+  Se o desenho ficar menor que a captura (o png tem margem), aumentar
+  K_W/K_H mantendo H = 1.48 x W.
+  Joystick (nao alterado): centro (84, VH-84), raio 56 -> igual a captura.
+ROLAGEM DO NOME NA ABERTURA (pendente):
+  A rolagem atual pula 1 letra por vez (fatia da string).  Para deslizar
+  em pixels e preciso RECORTAR o texto (clip/scissor) ou medir a largura
+  das letras.  Falta achar essas funcoes: usuario roda o comando de
+  texto_clip.txt (abaixo) e manda o arquivo.
+  cd ~/FTS-15 && L=FTS15-RECURSOS/lib/armeabi-v7a/libFTS15.so && r2 -q -a arm -b 32 -e bin.relocs.apply=true -c "aaa; afl~Scissor,Clip,Width,StrLen,TextLen,Ticker,Scroll; ii~glScissor,glEnable; pd 120 @ 0x13ef74" $L > ~/storage/downloads/texto_clip.txt && echo OK
+COMANDO (so botoes):
+  cd ~/FTS-15 && unzip -o "$(ls -t ~/storage/downloads/alteracoes*.zip | head -1)" > /dev/null && bash FTS15-PATCH/build_botoes.sh && bash FTS15-PATCH/patch_botoes.sh
