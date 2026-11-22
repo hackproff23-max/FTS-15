@@ -1,4 +1,5 @@
 00283474 T start
-002838d8 T tramp_card
-002838b4 T tramp_goal
-00283888 T tramp_setup
+00283908 T tramp_card
+002838e4 T tramp_goal
+00283964 T tramp_msg
+002838b8 T tramp_setup

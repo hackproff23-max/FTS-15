@@ -16,6 +16,7 @@ s=f'''
 .global tramp_setup
 .global tramp_goal
 .global tramp_card
+.global tramp_msg
 .macro FADD rd, rs, imm
   ldr ip, =\\imm
   vmov s0, \\rs
@@ -85,6 +86,8 @@ Lf_soff: .asciz "%d CHUTES FORA"
 Lf_sav:  .asciz "%d DEFESAS"
 Ls_yel:  .asciz "CARTAO AMARELO"
 Ls_red:  .asciz "CARTAO VERMELHO"
+Ls_inj:  .asciz "LESIONADO"
+Ls_mom:  .asciz "MELHOR EM CAMPO"
 Lp_pos:  .asciz "+8"
 Lp_yel:  .asciz "-2"
 Lp_red:  .asciz "-10"
@@ -185,6 +188,12 @@ Lcode:
   beq Lfmt0
   cmp r11, #3
   addeq r1, r5, #(Ls_red - Ldata)
+  beq Lfmt0
+  cmp r11, #4
+  addeq r1, r5, #(Ls_inj - Ldata)
+  beq Lfmt0
+  cmp r11, #5
+  addeq r1, r5, #(Ls_mom - Ldata)
   beq Lfmt0
   ldr r2, [r6, #0x2c]      @ gols
   cmp r2, #0
@@ -296,9 +305,45 @@ tramp_card:                @ substitui bl GameMessageSet nos cartoes (r0 = 9 ama
   sub r4, r4, #7           @ 9 -> 2 (amarelo), 10 -> 3 (vermelho)
   strb r4, [r6, #0x2b5]
   pop {{r4-r6, pc}}
+
+tramp_msg:                 @ lesao / melhor em campo: r0=id r1=texto r2=&nome(+0x24) r3=time
+  push {{r4-r8, lr}}
+  mov r4, r0
+  mov r6, r3
+  mov r7, r2
+  adr r0, Tt
+  ldr r1, [r0]
+  add r0, r0, r1
+  ldr r5, [r0]             @ &tGame
+  movw r1, #0x10f8
+  mla r1, r6, r1, r5
+  movw r2, #0x392c
+  ldr r1, [r1, r2]         @ vetor de jogadores do time
+  sub r0, r7, #0x24
+  sub r0, r0, r1
+  mov r1, #0x74
+  bl S_IDIV
+  mov r8, r0               @ indice do jogador
+  adr r0, Th
+  ldr r3, [r0]
+  add r0, r0, r3
+  ldr r0, [r0]
+  ldr r0, [r0, #0x30]      @ this
+  mov r1, r6
+  mov r2, r8
+  bl S_SETUP
+  adr r6, Tg
+  ldr r0, [r6]
+  add r6, r6, r0
+  ldr r6, [r6]
+  cmp r4, #15
+  moveq r0, #4             @ lesao
+  movne r0, #5             @ melhor em campo
+  strb r0, [r6, #0x2b5]
+  pop {{r4-r8, pc}}
 .ltorg
 '''
 open('card.s','w').write(s)
 syms={k:tg[v] for k,v in N.items()}
-syms.update(S_G=0x6beae4,S_T=0x6bdb98,S_Y=0x6bdef8,S_H=0x6be78c,S_SCALE=0x1d27e4,S_SETUP=0x283e28,S_FTSSTR=tg['_Z9FTSstringi'])
+syms.update(S_G=0x6beae4,S_T=0x6bdb98,S_Y=0x6bdef8,S_H=0x6be78c,S_SCALE=0x1d27e4,S_SETUP=0x283e28,S_FTSSTR=tg['_Z9FTSstringi'],S_IDIV=tg['__aeabi_idiv'])
 open('syms.txt','w').write(' '.join(f'--defsym={k}=0x{v:x}' for k,v in syms.items()))

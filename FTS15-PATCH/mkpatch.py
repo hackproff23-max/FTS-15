@@ -1,4 +1,6 @@
 import re,json
+_so=open('/tmp/claude-0/z/FTS15_envio_b2/libs/libFTS15.so','rb').read()
+orig=lambda a:_so[a:a+4].hex()
 h={m.group(2):int(m.group(1),16) for m in re.finditer(r'([0-9a-f]{8}) T (\w+)',open('hooks.txt').read())}
 t='''#!/usr/bin/env python3
 """Aplica o cartao compacto (gol / amarelo / vermelho) no libFTS15.so.
@@ -14,6 +16,8 @@ HOOKS = [
   (0x36c1c8, "255ff7eb", %(setup)#x),   # SetupPlayerStats (faixa da comemoracao)
   (0x36c2d8, "0265f7eb", %(card)#x),    # GameMessageSet dos cartoes
   (0x36c34c, "fe4bf7eb", %(goal)#x),    # FTSstring do ramo de gol
+  (0x36c018, "%(o1)s", %(msg)#x),       # lesao (IG_INJURED)
+  (0x36c6a0, "%(o2)s", %(msg)#x),       # melhor em campo
 ]
 def bl(a, t):
     return struct.pack("<I", 0xEB000000 | (((t - (a + 8)) >> 2) & 0xFFFFFF))
@@ -32,5 +36,5 @@ for a, orig, t in HOOKS:
     d[a:a+4] = bl(a, t)
 open(so, "wb").write(d)
 print("OK: render (%%d bytes) + %%d ganchos gravados em %%s" %% (len(new), len(HOOKS), so))
-''' % dict(setup=h['tramp_setup'],card=h['tramp_card'],goal=h['tramp_goal'])
+''' % dict(setup=h['tramp_setup'],card=h['tramp_card'],goal=h['tramp_goal'],msg=h['tramp_msg'],o1=orig(0x36c018),o2=orig(0x36c6a0))
 open('pkg/FTS15-PATCH/patch_fts15.py','w').write(t)
