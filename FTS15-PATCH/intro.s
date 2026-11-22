@@ -30,6 +30,9 @@
 .equ L_TMP,  88
 .equ L_SC,   92
 .equ L_NX,   96
+.equ L_SC2,  100
+.equ L_N0,   104
+.equ L_TLV,  108
 .equ O_IMG,  112
 .equ O_NH,   336
 .equ O_NA,   848
@@ -60,9 +63,45 @@
   vmov \sd, ip
 .endm
 
-@ nome do time: idreg=id do time, flag=0 casa/1 visitante, colslot=cor do texto,
-@ align=0 esq/1 dir, xslot=x do texto, buf=buffer do nome
-.macro NAME idreg, flag, colslot, align, xslot, buf
+@ alpha manual (sem passar por XGSColour_AddPercentileAlpha):
+@ rd = (alpha*255)<<24 | rgb ; sa = s-reg com alpha 0..1 ; white=1 -> rgb=ffffff
+.macro MANA rd, sa, white
+  TL s14, K_255
+  vmul.f32 s14, \sa, s14
+  vcvt.u32.f32 s14, s14
+  vmov \rd, s14
+  lsl \rd, \rd, #24
+.if \white
+  mvn ip, #0xff000000
+  orr \rd, \rd, ip
+.endif
+.endm
+
+@ quadradinho de diagnostico acima da barra (so se K_DBG != 0)
+.macro DBGBOX dx, col
+  TL s1, K_DBG
+  vcmp.f32 s1, #0
+  vmrs APSR_nzcv, fpscr
+  beq 1f
+  vldr s0, [sp, #L_CX]
+  TL s1, \dx
+  vadd.f32 s0, s0, s1
+  vmov r0, s0
+  vldr s0, [sp, #L_G]
+  TL s1, K_LGY
+  vadd.f32 s0, s0, s1
+  vmov r1, s0
+  TL s2, K_DBGSZ
+  vmov r2, s2
+  mov r3, r2
+  movw ip, #((\col) & 0xffff)
+  movt ip, #((\col) >> 16)
+  bl boxcommon
+1:
+.endm
+
+@ mede o nome: guarda a escala (limitada) em [sp,#slot]
+.macro PREP idreg, flag, buf, slot
   mov r0, \idreg
   mvn r1, #0
   mov r2, #\flag
@@ -73,19 +112,14 @@
   bl CAP
   SPADDR r0, \buf
   bl STRLEN
-  cmp r0, #1
-  movlt r0, #1
-  vmov s0, r0
-  vcvt.f32.s32 s0, s0
-  TL s1, K_CHARW
-  vmul.f32 s0, s0, s1
-  TL s1, K_AVAIL
-  vdiv.f32 s2, s1, s0
-  TL s3, K_SCMAX
-  vcmp.f32 s2, s3
-  vmrs APSR_nzcv, fpscr
-  vmovgt.f32 s2, s3
-  vstr s2, [sp, #L_SC]
+  str r0, [sp, #\slot]
+.endm
+
+@ desenha o nome (buffer ja preenchido por PREP; escala comum em L_SC)
+.macro NAME colslot, align, xslot, buf, nslot
+  SPADDR r6, \buf
+  ldr r1, [sp, #\nslot]
+  bl SCR
   mov r0, #2
   bl SETFONT
   ldr r0, [sp, #L_SC]
@@ -109,7 +143,7 @@
   vsub.f32 s0, s0, s1
   vmov r1, s0
   ldr r0, [sp, #\xslot]
-  SPADDR r2, \buf
+  mov r2, r6
   bl PRINT
 .endm
 
@@ -159,21 +193,30 @@ K_LOIN:   .float 0.0       @ recuo do escudo dentro da barra
 K_LODY:   .float 0.0       @ ajuste vertical do escudo
 K_GAP:    .float 6.0       @ espaco entre escudo e nome
 K_TXTMID: .float 6.8       @ centro vertical do texto (sobe/desce o nome)
-K_SCMAX:  .float 2.7       @ escala maxima do nome
-K_CHARW:  .float 5.6       @ largura media da letra na escala 1
-K_AVAIL:  .float 150.0     @ largura maxima do nome (encolhe se maior)
-K_LGW:    .float 22.0      @ largura do logo da liga
-K_LGH:    .float 37.0      @ altura do logo da liga
-K_LGY:    .float -127.0    @ topo do logo da liga = G + isto
+K_SCMAX:  .float 2.7       @ tamanho FIXO dos dois nomes (igual nos dois)
+K_CHARW:  .float 5.0       @ largura media da letra na escala 1
+K_AVAIL:  .float 162.0     @ largura da janela do nome (maior que isso = rola de lado)
+K_LGW:    .float 33.0      @ largura do logo da liga
+K_LGH:    .float 55.5      @ altura do logo da liga
+K_LGY:    .float -145.5    @ topo do logo da liga = G + isto
 K_BANDY:  .float -135.0    @ topo da faixa escura translucida = G + isto
 K_BANDH:  .float 89.0      @ altura da faixa escura
-K_BANDA:  .float 0.35      @ opacidade da faixa (0 = sem faixa)
+K_BANDA:  .float 0.0      @ opacidade da faixa (0 = sem faixa)
 K_INV1:   .float 4.0       @ fase 1: logo (p ate 0.25)
 K_T1:     .float 0.25
 K_INV2:   .float 3.333333  @ fase 2: barra cresce (0.25 a 0.55)
 K_T2:     .float 0.55
 K_INV3:   .float 2.857143  @ fase 3: escudo+nome entram (0.55 a 0.90)
 K_SLIDE:  .float 110.0     @ distancia inicial do deslize lateral
+K_HOLD:   .float 0.2       @ parada nas pontas do vai-e-volta (maior = para mais)
+K_INVSPAN:.float 1.666667  @ 1/(1-2*HOLD)
+K_TLMAX:  .float 90.0      @ duracao (ticks) de um vai-e-volta completo
+K_255:    .float 255.0
+K_DBG:    .float 0.0       @ 1 = quadradinhos de diagnostico acima da barra (0 desliga)
+K_DBGSZ:  .float 8.0
+K_DBX1:   .float -20.0
+K_DBX2:   .float 0.0
+K_DBX3:   .float 20.0
 
 Lcode:
   push {r4-r11, lr}
@@ -191,10 +234,13 @@ Lcode:
   mov r0, r4
   bl GETTP
   str r0, [sp, #L_P]
+  mov r0, #0
+  str r0, [sp, #L_TLV]
   b Lgotp
 Lstate2:
   mov r0, r4
   bl GETTL
+  str r0, [sp, #L_TLV]
   cmp r0, #0x59
   bgt Lnoexit
   ldr r0, [r4]
@@ -276,10 +322,8 @@ Lgotp:
   @ ---- faixa escura translucida
   vldr s0, [sp, #L_A]
   TL s1, K_BANDA
-  vmul.f32 s1, s0, s1
-  vmov r1, s1
-  mov r0, #0xff000000
-  bl ALPHA
+  vmul.f32 s0, s0, s1
+  MANA r0, s0, 0
   str r0, [sp, #L_TMP]
   vldr s0, [sp, #L_G]
   TL s1, K_BANDY
@@ -305,12 +349,12 @@ Lgotp:
   blt Lnoleague
   cmp r0, #0x20
   bgt Lnoleague
-  mov r1, r0
+  str r0, [sp, #L_TMP]
+  ldr r1, [sp, #L_TMP]
   SPADDR r0, O_IMG
   bl LGSINGLE
-  mvn r0, #0
-  ldr r1, [sp, #L_A]
-  bl ALPHA
+  vldr s0, [sp, #L_A]
+  MANA r0, s0, 1
   str r0, [sp, #4]
   ldr r0, [r5, #(K_LGH - Ldata)]
   str r0, [sp]
@@ -357,6 +401,10 @@ Lnobar:
   vcmp.f32 s0, #0
   vmrs APSR_nzcv, fpscr
   ble Lend
+  PREP r9, 0, O_NH, L_N0
+  PREP r10, 1, O_NA, L_SC2
+  TL s0, K_SCMAX
+  vstr s0, [sp, #L_SC]
   vldr s6, [sp, #L_U3]
   TL s7, K_SLIDE
   vmul.f32 s6, s6, s7          @ s6 = deslocamento restante
@@ -392,7 +440,7 @@ Lnobar:
   vadd.f32 s0, s0, s1
   vsub.f32 s0, s0, s6
   vstr s0, [sp, #L_NX]
-  NAME r9, 0, L_CTXH, 0, L_NX, O_NH
+  NAME L_CTXH, 0, L_NX, O_NH, L_N0
   @ nome do visitante: x = W - marg - logow - gap + desl (alinhado a direita)
   vldr s6, [sp, #L_U3]
   TL s7, K_SLIDE
@@ -406,7 +454,7 @@ Lnobar:
   vsub.f32 s0, s0, s1
   vadd.f32 s0, s0, s6
   vstr s0, [sp, #L_NX]
-  NAME r10, 1, L_CTXA, 1, L_NX, O_NA
+  NAME L_CTXA, 1, L_NX, O_NA, L_SC2
 Lend:
   mov r0, #1
   bl SETFONT
@@ -415,6 +463,59 @@ Lexit:
   add sp, sp, #80
   add sp, sp, #4
   pop {r4-r11, pc}
+
+SCR:                       @ r1=n letras, r6=buf -> r6=trecho a mostrar
+  vldr s2, [sp, #L_SC]
+  TL s3, K_CHARW
+  vmul.f32 s2, s2, s3
+  TL s3, K_AVAIL
+  vdiv.f32 s3, s3, s2
+  vcvt.s32.f32 s3, s3
+  vmov r2, s3
+  cmp r2, #1
+  movlt r2, #1
+  cmp r1, r2
+  bxle lr
+  sub r3, r1, r2
+  vmov s4, r3
+  vcvt.f32.s32 s4, s4
+  vldr s5, [sp, #L_TLV]
+  vcvt.f32.s32 s5, s5
+  TL s6, K_TLMAX
+  vdiv.f32 s5, s5, s6
+  CL01 s5
+  vadd.f32 s5, s5, s5
+  vmov.f32 s15, #1.0
+  vsub.f32 s5, s5, s15
+  vabs.f32 s5, s5
+  vsub.f32 s5, s15, s5
+  TL s6, K_HOLD
+  vsub.f32 s5, s5, s6
+  TL s6, K_INVSPAN
+  vmul.f32 s5, s5, s6
+  CL01 s5
+  vmul.f32 s5, s5, s4
+  TL s6, K_HALF
+  vadd.f32 s5, s5, s6
+  vcvt.s32.f32 s5, s5
+  vmov r0, s5
+  add r6, r6, r0
+  add r7, r6, r2
+1:
+  ldrb ip, [r6]
+  and ip, ip, #0xc0
+  cmp ip, #0x80
+  addeq r6, r6, #1
+  beq 1b
+2:
+  ldrb ip, [r7]
+  and ip, ip, #0xc0
+  cmp ip, #0x80
+  subeq r7, r7, #1
+  beq 2b
+  mov ip, #0
+  strb ip, [r7]
+  bx lr
 
 boxcommon:                 @ r0..r3 = x,y,w,h ; ip = cor
   str ip, [sp]
