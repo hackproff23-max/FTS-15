@@ -9,11 +9,13 @@ new = open(os.path.join(here, "card.bin"), "rb").read()
 RENDER = 0x283474
 # (endereco do bl, bytes originais do bl, destino novo)
 HOOKS = [
-  (0x36c1c8, "255ff7eb", 0x2838b8),   # SetupPlayerStats (faixa da comemoracao)
-  (0x36c2d8, "0265f7eb", 0x283908),    # GameMessageSet dos cartoes
-  (0x36c34c, "fe4bf7eb", 0x2838e4),    # FTSstring do ramo de gol
-  (0x36c018, "b265f7eb", 0x283964),       # lesao (IG_INJURED)
-  (0x36c6a0, "1064f7eb", 0x283964),       # melhor em campo
+  (0x36c1c8, "255ff7eb", 0x2839f0),   # setup
+  (0x36c2d8, "0265f7eb", 0x283a40),   # card
+  (0x36c34c, "fe4bf7eb", 0x283a1c),   # goal
+  (0x36c018, "b265f7eb", 0x283ac0),   # msg
+  (0x36c6a0, "1064f7eb", 0x283ac0),   # msg
+  (0x36c280, "314cf7eb", 0x283a9c),   # own
+  (0x36c370, "dc64f7eb", 0x283ac0),   # msg
 ]
 def bl(a, t):
     return struct.pack("<I", 0xEB000000 | (((t - (a + 8)) >> 2) & 0xFFFFFF))

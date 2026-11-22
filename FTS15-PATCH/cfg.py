@@ -6,5 +6,6 @@ CFG = dict(
   TOP_H=28.4, BOT_H=22.6,     # faixa do nome / faixa clara de baixo
   LOGO_X=2.9, LOGO_DY=9.5, LOGO_S=36.0,
   NUM_X=42.0, NAME_X=64.0, NAME_DY=1.5, NAME_SCALE=1.8,   # numero da camisa e nome
+  CW=5.6, PADR=5.0, MAXW=280.0,   # largura media por letra (por unidade de escala), margem direita, largura maxima
   STAT_X=52.0, STAT_DY=3.0, STAT_SCALE=1.6,   # texto de baixo (alinhado a esquerda)
 )

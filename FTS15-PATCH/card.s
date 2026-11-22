@@ -8,6 +8,7 @@
 .global tramp_goal
 .global tramp_card
 .global tramp_msg
+.global tramp_own
 .macro FADD rd, rs, imm
   ldr ip, =\imm
   vmov s0, \rs
@@ -39,6 +40,29 @@
   ldr r3, =\h
   ldr ip, [sp, #\slot]
   bl boxcommon
+.endm
+.macro BOXSW x, dy, h, slot
+  ldr r0, [sp, #432]
+  FADD r1, r0, \dy
+  ldr r0, =\x
+  ldr r2, [sp, #448]
+  ldr r3, =\h
+  ldr ip, [sp, #\slot]
+  bl boxcommon
+.endm
+.macro BOXCW x, dy, h, col
+  ldr r0, [sp, #432]
+  FADD r1, r0, \dy
+  ldr r0, =\x
+  ldr r2, [sp, #448]
+  ldr r3, =\h
+  ldr ip, =\col
+  bl boxcommon
+.endm
+.macro SCALEV slot
+  ldr r0, [sp, #\slot]
+  mov r1, r0
+  bl S_SCALE
 .endm
 .macro TXTCOL col
   ldr r0, =\col
@@ -79,6 +103,7 @@ Ls_yel:  .asciz "CARTAO AMARELO"
 Ls_red:  .asciz "CARTAO VERMELHO"
 Ls_inj:  .asciz "LESIONADO"
 Ls_mom:  .asciz "MELHOR EM CAMPO"
+Ls_og:   .asciz "GOL CONTRA"
 Lp_pos:  .asciz "+8"
 Lp_yel:  .asciz "-2"
 Lp_red:  .asciz "-10"
@@ -124,56 +149,15 @@ Lcode:
   str r0, [sp, #440]
   ldr r0, =0xffe8e8e8
   str r0, [sp, #444]
-  @ ---- caixa do cartao
-  BOXS 0x00000000, 0x00000000, 0x43110000, 0x424c0000, 436
-  BOXC 0x00000000, 0x41e33333, 0x43110000, 0x41b4cccd, 0xffe8e8e8
-  @ ---- escudo
-  movw r0, #0x10f8
-  mla r0, r8, r0, r7
-  movw r1, #0x2840
-  ldr r1, [r0, r1]
-  add r0, sp, #0x120
-  mov r2, #0
-  mvn r3, #0
-  mvn ip, #1
-  str ip, [sp]
-  mov ip, #3
-  str ip, [sp, #4]
-  bl LOGO
-  ldr r0, [sp, #432]
-  FADD r2, r0, 0x41180000
-  mvn r1, #0
-  str r1, [sp, #4]
-  ldr r1, =0x42100000
-  str r1, [sp]
-  mov r3, r1
-  ldr r1, =0x4039999a
-  add r0, sp, #0x120
-  bl DRAW
-  @ ---- nome
-  mov r0, #2
-  bl SETFONT
-  SCALE 0x3fe66666
-  ldr r0, [sp, #440]
-  ldr r1, =0x3f800000
-  bl ALPHA
-  mov r1, #0
-  bl SETCOL
+  @ ---- strings: numero, nome, texto de baixo
   ldrb r2, [r10, #0x55]
   add r1, r5, #(Lp_num - Ldata)
   add r0, sp, #0x90
   bl SPRINTF
-  PRINTAT 0, 0x42280000, 0x3fc00000, 0x90
   add r0, sp, #0x40
   add r1, r10, #0x24
   mov r2, #0x11
   bl CAP
-  PRINTAT 0, 0x42800000, 0x3fc00000, 0x40
-  @ ---- texto de baixo
-  mov r0, #2
-  bl SETFONT
-  SCALE 0x3fcccccd
-  TXTCOL 0xff303030
   cmp r11, #2
   addeq r1, r5, #(Ls_yel - Ldata)
   beq Lfmt0
@@ -185,6 +169,9 @@ Lcode:
   beq Lfmt0
   cmp r11, #5
   addeq r1, r5, #(Ls_mom - Ldata)
+  beq Lfmt0
+  cmp r11, #6
+  addeq r1, r5, #(Ls_og - Ldata)
   beq Lfmt0
   ldr r2, [r6, #0x2c]      @ gols
   cmp r2, #0
@@ -215,6 +202,117 @@ Lfmt:
   add r0, sp, #0xc0
   bl SPRINTF
 Lshow:
+  @ ---- largura do cartao (cresce para caber nome / texto) e escala das letras
+  add r0, sp, #0x40
+  bl STRLEN
+  cmp r0, #1
+  movlt r0, #1
+  mov r4, r0               @ n = letras do nome
+  add r0, sp, #0xc0
+  bl STRLEN
+  cmp r0, #1
+  movlt r0, #1
+  mov r9, r0               @ m = letras do texto de baixo
+  vmov s0, r4
+  vcvt.f32.s32 s0, s0
+  vmov s2, r9
+  vcvt.f32.s32 s2, s2
+  ldr ip, =0x412147ae
+  vmov s1, ip
+  vmul.f32 s1, s0, s1
+  ldr ip, =0x428a0000
+  vmov s4, ip
+  vadd.f32 s1, s1, s4      @ precisa p/ nome
+  ldr ip, =0x410f5c29
+  vmov s3, ip
+  vmul.f32 s3, s2, s3
+  ldr ip, =0x42640000
+  vmov s4, ip
+  vadd.f32 s3, s3, s4      @ precisa p/ texto de baixo
+  ldr ip, =0x43110000
+  vmov s5, ip              @ s5 = largura W
+  vcmp.f32 s1, s5
+  vmrs APSR_nzcv, fpscr
+  vmovgt.f32 s5, s1
+  vcmp.f32 s3, s5
+  vmrs APSR_nzcv, fpscr
+  vmovgt.f32 s5, s3
+  ldr ip, =0x438c0000
+  vmov s6, ip
+  vcmp.f32 s5, s6
+  vmrs APSR_nzcv, fpscr
+  vmovgt.f32 s5, s6
+  vstr s5, [sp, #448]
+  @ escala do nome = min(NAME_SCALE, (W-margem-NAME_X)/(n*CW))
+  ldr ip, =0x428a0000
+  vmov s4, ip
+  vsub.f32 s7, s5, s4
+  ldr ip, =0x40b33333
+  vmov s4, ip
+  vmul.f32 s0, s0, s4
+  vdiv.f32 s7, s7, s0
+  ldr ip, =0x3fe66666
+  vmov s1, ip
+  vcmp.f32 s7, s1
+  vmrs APSR_nzcv, fpscr
+  vmovgt.f32 s7, s1
+  vstr s7, [sp, #452]
+  @ escala do texto de baixo
+  ldr ip, =0x42640000
+  vmov s4, ip
+  vsub.f32 s7, s5, s4
+  ldr ip, =0x40b33333
+  vmov s4, ip
+  vmul.f32 s2, s2, s4
+  vdiv.f32 s7, s7, s2
+  ldr ip, =0x3fcccccd
+  vmov s1, ip
+  vcmp.f32 s7, s1
+  vmrs APSR_nzcv, fpscr
+  vmovgt.f32 s7, s1
+  vstr s7, [sp, #456]
+  @ ---- caixa do cartao
+  BOXSW 0x00000000, 0x00000000, 0x424c0000, 436
+  BOXCW 0x00000000, 0x41e33333, 0x41b4cccd, 0xffe8e8e8
+  @ ---- escudo
+  movw r0, #0x10f8
+  mla r0, r8, r0, r7
+  movw r1, #0x2840
+  ldr r1, [r0, r1]
+  add r0, sp, #0x120
+  mov r2, #0
+  mvn r3, #0
+  mvn ip, #1
+  str ip, [sp]
+  mov ip, #3
+  str ip, [sp, #4]
+  bl LOGO
+  ldr r0, [sp, #432]
+  FADD r2, r0, 0x41180000
+  mvn r1, #0
+  str r1, [sp, #4]
+  ldr r1, =0x42100000
+  str r1, [sp]
+  mov r3, r1
+  ldr r1, =0x4039999a
+  add r0, sp, #0x120
+  bl DRAW
+  @ ---- numero + nome
+  mov r0, #2
+  bl SETFONT
+  SCALEV 452
+  ldr r0, [sp, #440]
+  ldr r1, =0x3f800000
+  bl ALPHA
+  mov r1, #0
+  bl SETCOL
+  PRINTAT 0, 0x42280000, 0x3fc00000, 0x90
+  PRINTAT 0, 0x42800000, 0x3fc00000, 0x40
+  @ ---- texto de baixo
+  mov r0, #2
+  bl SETFONT
+  SCALEV 456
+  TXTCOL 0xff303030
   PRINTAT 0, 0x42500000, 0x41fb3333, 0xc0
 Lend:
   mov r0, #1
@@ -297,6 +395,17 @@ tramp_card:                @ substitui bl GameMessageSet nos cartoes (r0 = 9 ama
   strb r4, [r6, #0x2b5]
   pop {r4-r6, pc}
 
+tramp_own:                 @ substitui bl FTSstring(IG_OWNGOAL): marca gol contra
+  push {r0, lr}
+  adr r1, Tg
+  ldr r2, [r1]
+  add r1, r1, r2
+  ldr r1, [r1]
+  mov r2, #1
+  strb r2, [r1, #0x2b7]
+  pop {r0, lr}
+  b S_FTSSTR
+
 tramp_msg:                 @ lesao / melhor em campo: r0=id r1=texto r2=&nome(+0x24) r3=time
   push {r4-r8, lr}
   mov r4, r0
@@ -329,7 +438,17 @@ tramp_msg:                 @ lesao / melhor em campo: r0=id r1=texto r2=&nome(+0
   ldr r6, [r6]
   cmp r4, #15
   moveq r0, #4             @ lesao
+  beq Lset
+  cmp r4, #11
   movne r0, #5             @ melhor em campo
+  bne Lset
+  ldrb r0, [r6, #0x2b7]    @ mensagem de gol: gol contra?
+  mov r1, #0
+  strb r1, [r6, #0x2b7]
+  cmp r0, #0
+  moveq r0, #1             @ gol
+  movne r0, #6             @ gol contra
+Lset:
   strb r0, [r6, #0x2b5]
   pop {r4-r8, pc}
 .ltorg

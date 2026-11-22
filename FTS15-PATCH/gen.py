@@ -5,8 +5,9 @@ def f(x): return "0x%08x"%struct.unpack('<I',struct.pack('<f',x))[0]
 N={'RB':'_Z15FEBU_RoundedBoxffffjbfifbj','LOGO':'_Z16FETU_GetTeamLogoP6TImageibiii','DRAW':'_Z21FTS2D_DrawTexScaleColP6TImageffffj',
  'SETFONT':'_Z12FESU_SetFonti','ALIGN':'_Z16XGSFont_SetAlign10EFontAlign','ALPHA':'_Z28XGSColour_AddPercentileAlphajf',
  'SETCOL':'_Z17XGSFont_SetColourjj','CAP':'_Z15FESU_CapitalizePwPKwi','PRINT':'_Z21XGSFont_PrintfUnicodeffPKwz',
- 'SPRINTF':'_Z8xsprintfPwPKcz','TEAMCOL':'_ZN13CHudComponent13GetTeamColourEi','BW':'_ZN13CHudComponent23GetBestTextTeamColourBWEii','MIX':'_Z7XMixColjjf'}
-YT,CP,CT,CL=0x1b0,0x1b4,0x1b8,0x1bc   # slots na pilha
+ 'SPRINTF':'_Z8xsprintfPwPKcz','TEAMCOL':'_ZN13CHudComponent13GetTeamColourEi','BW':'_ZN13CHudComponent23GetBestTextTeamColourBWEii','MIX':'_Z7XMixColjjf','STRLEN':'_Z7xstrlenPKw'}
+YT,CP,CT,CL=0x1b0,0x1b4,0x1b8,0x1bc
+WS,SN,SS=0x1c0,0x1c4,0x1c8   # slots na pilha
 s=f'''
 .arm
 .syntax unified
@@ -17,6 +18,7 @@ s=f'''
 .global tramp_goal
 .global tramp_card
 .global tramp_msg
+.global tramp_own
 .macro FADD rd, rs, imm
   ldr ip, =\\imm
   vmov s0, \\rs
@@ -48,6 +50,29 @@ s=f'''
   ldr r3, =\\h
   ldr ip, [sp, #\\slot]
   bl boxcommon
+.endm
+.macro BOXSW x, dy, h, slot
+  ldr r0, [sp, #{YT}]
+  FADD r1, r0, \\dy
+  ldr r0, =\\x
+  ldr r2, [sp, #{WS}]
+  ldr r3, =\\h
+  ldr ip, [sp, #\\slot]
+  bl boxcommon
+.endm
+.macro BOXCW x, dy, h, col
+  ldr r0, [sp, #{YT}]
+  FADD r1, r0, \\dy
+  ldr r0, =\\x
+  ldr r2, [sp, #{WS}]
+  ldr r3, =\\h
+  ldr ip, =\\col
+  bl boxcommon
+.endm
+.macro SCALEV slot
+  ldr r0, [sp, #\\slot]
+  mov r1, r0
+  bl S_SCALE
 .endm
 .macro TXTCOL col
   ldr r0, =\\col
@@ -88,6 +113,7 @@ Ls_yel:  .asciz "CARTAO AMARELO"
 Ls_red:  .asciz "CARTAO VERMELHO"
 Ls_inj:  .asciz "LESIONADO"
 Ls_mom:  .asciz "MELHOR EM CAMPO"
+Ls_og:   .asciz "GOL CONTRA"
 Lp_pos:  .asciz "+8"
 Lp_yel:  .asciz "-2"
 Lp_red:  .asciz "-10"
@@ -133,56 +159,15 @@ Lcode:
   str r0, [sp, #{CT}]
   ldr r0, =0xffe8e8e8
   str r0, [sp, #{CL}]
-  @ ---- caixa do cartao
-  BOXS {f(c['CARD_X'])}, {f(0.0)}, {f(c['CARD_W'])}, {f(c['TOP_H']+c['BOT_H'])}, {CP}
-  BOXC {f(c['CARD_X'])}, {f(c['TOP_H'])}, {f(c['CARD_W'])}, {f(c['BOT_H'])}, 0xffe8e8e8
-  @ ---- escudo
-  movw r0, #0x10f8
-  mla r0, r8, r0, r7
-  movw r1, #0x2840
-  ldr r1, [r0, r1]
-  add r0, sp, #0x120
-  mov r2, #0
-  mvn r3, #0
-  mvn ip, #1
-  str ip, [sp]
-  mov ip, #3
-  str ip, [sp, #4]
-  bl LOGO
-  ldr r0, [sp, #{YT}]
-  FADD r2, r0, {f(c['LOGO_DY'])}
-  mvn r1, #0
-  str r1, [sp, #4]
-  ldr r1, ={f(c['LOGO_S'])}
-  str r1, [sp]
-  mov r3, r1
-  ldr r1, ={f(c['LOGO_X'])}
-  add r0, sp, #0x120
-  bl DRAW
-  @ ---- nome
-  mov r0, #2
-  bl SETFONT
-  SCALE {f(c['NAME_SCALE'])}
-  ldr r0, [sp, #{CT}]
-  ldr r1, =0x3f800000
-  bl ALPHA
-  mov r1, #0
-  bl SETCOL
+  @ ---- strings: numero, nome, texto de baixo
   ldrb r2, [r10, #0x55]
   add r1, r5, #(Lp_num - Ldata)
   add r0, sp, #0x90
   bl SPRINTF
-  PRINTAT 0, {f(c['NUM_X'])}, {f(c['NAME_DY'])}, 0x90
   add r0, sp, #0x40
   add r1, r10, #0x24
   mov r2, #0x11
   bl CAP
-  PRINTAT 0, {f(c['NAME_X'])}, {f(c['NAME_DY'])}, 0x40
-  @ ---- texto de baixo
-  mov r0, #2
-  bl SETFONT
-  SCALE {f(c['STAT_SCALE'])}
-  TXTCOL 0xff303030
   cmp r11, #2
   addeq r1, r5, #(Ls_yel - Ldata)
   beq Lfmt0
@@ -194,6 +179,9 @@ Lcode:
   beq Lfmt0
   cmp r11, #5
   addeq r1, r5, #(Ls_mom - Ldata)
+  beq Lfmt0
+  cmp r11, #6
+  addeq r1, r5, #(Ls_og - Ldata)
   beq Lfmt0
   ldr r2, [r6, #0x2c]      @ gols
   cmp r2, #0
@@ -224,6 +212,117 @@ Lfmt:
   add r0, sp, #0xc0
   bl SPRINTF
 Lshow:
+  @ ---- largura do cartao (cresce para caber nome / texto) e escala das letras
+  add r0, sp, #0x40
+  bl STRLEN
+  cmp r0, #1
+  movlt r0, #1
+  mov r4, r0               @ n = letras do nome
+  add r0, sp, #0xc0
+  bl STRLEN
+  cmp r0, #1
+  movlt r0, #1
+  mov r9, r0               @ m = letras do texto de baixo
+  vmov s0, r4
+  vcvt.f32.s32 s0, s0
+  vmov s2, r9
+  vcvt.f32.s32 s2, s2
+  ldr ip, ={f(c['CW']*c['NAME_SCALE'])}
+  vmov s1, ip
+  vmul.f32 s1, s0, s1
+  ldr ip, ={f(c['NAME_X']+c['PADR'])}
+  vmov s4, ip
+  vadd.f32 s1, s1, s4      @ precisa p/ nome
+  ldr ip, ={f(c['CW']*c['STAT_SCALE'])}
+  vmov s3, ip
+  vmul.f32 s3, s2, s3
+  ldr ip, ={f(c['STAT_X']+c['PADR'])}
+  vmov s4, ip
+  vadd.f32 s3, s3, s4      @ precisa p/ texto de baixo
+  ldr ip, ={f(c['CARD_W'])}
+  vmov s5, ip              @ s5 = largura W
+  vcmp.f32 s1, s5
+  vmrs APSR_nzcv, fpscr
+  vmovgt.f32 s5, s1
+  vcmp.f32 s3, s5
+  vmrs APSR_nzcv, fpscr
+  vmovgt.f32 s5, s3
+  ldr ip, ={f(c['MAXW'])}
+  vmov s6, ip
+  vcmp.f32 s5, s6
+  vmrs APSR_nzcv, fpscr
+  vmovgt.f32 s5, s6
+  vstr s5, [sp, #{WS}]
+  @ escala do nome = min(NAME_SCALE, (W-margem-NAME_X)/(n*CW))
+  ldr ip, ={f(c['NAME_X']+c['PADR'])}
+  vmov s4, ip
+  vsub.f32 s7, s5, s4
+  ldr ip, ={f(c['CW'])}
+  vmov s4, ip
+  vmul.f32 s0, s0, s4
+  vdiv.f32 s7, s7, s0
+  ldr ip, ={f(c['NAME_SCALE'])}
+  vmov s1, ip
+  vcmp.f32 s7, s1
+  vmrs APSR_nzcv, fpscr
+  vmovgt.f32 s7, s1
+  vstr s7, [sp, #{SN}]
+  @ escala do texto de baixo
+  ldr ip, ={f(c['STAT_X']+c['PADR'])}
+  vmov s4, ip
+  vsub.f32 s7, s5, s4
+  ldr ip, ={f(c['CW'])}
+  vmov s4, ip
+  vmul.f32 s2, s2, s4
+  vdiv.f32 s7, s7, s2
+  ldr ip, ={f(c['STAT_SCALE'])}
+  vmov s1, ip
+  vcmp.f32 s7, s1
+  vmrs APSR_nzcv, fpscr
+  vmovgt.f32 s7, s1
+  vstr s7, [sp, #{SS}]
+  @ ---- caixa do cartao
+  BOXSW {f(c['CARD_X'])}, {f(0.0)}, {f(c['TOP_H']+c['BOT_H'])}, {CP}
+  BOXCW {f(c['CARD_X'])}, {f(c['TOP_H'])}, {f(c['BOT_H'])}, 0xffe8e8e8
+  @ ---- escudo
+  movw r0, #0x10f8
+  mla r0, r8, r0, r7
+  movw r1, #0x2840
+  ldr r1, [r0, r1]
+  add r0, sp, #0x120
+  mov r2, #0
+  mvn r3, #0
+  mvn ip, #1
+  str ip, [sp]
+  mov ip, #3
+  str ip, [sp, #4]
+  bl LOGO
+  ldr r0, [sp, #{YT}]
+  FADD r2, r0, {f(c['LOGO_DY'])}
+  mvn r1, #0
+  str r1, [sp, #4]
+  ldr r1, ={f(c['LOGO_S'])}
+  str r1, [sp]
+  mov r3, r1
+  ldr r1, ={f(c['LOGO_X'])}
+  add r0, sp, #0x120
+  bl DRAW
+  @ ---- numero + nome
+  mov r0, #2
+  bl SETFONT
+  SCALEV {SN}
+  ldr r0, [sp, #{CT}]
+  ldr r1, =0x3f800000
+  bl ALPHA
+  mov r1, #0
+  bl SETCOL
+  PRINTAT 0, {f(c['NUM_X'])}, {f(c['NAME_DY'])}, 0x90
+  PRINTAT 0, {f(c['NAME_X'])}, {f(c['NAME_DY'])}, 0x40
+  @ ---- texto de baixo
+  mov r0, #2
+  bl SETFONT
+  SCALEV {SS}
+  TXTCOL 0xff303030
   PRINTAT 0, {f(c['STAT_X'])}, {f(c['TOP_H']+c['STAT_DY'])}, 0xc0
 Lend:
   mov r0, #1
@@ -306,6 +405,17 @@ tramp_card:                @ substitui bl GameMessageSet nos cartoes (r0 = 9 ama
   strb r4, [r6, #0x2b5]
   pop {{r4-r6, pc}}
 
+tramp_own:                 @ substitui bl FTSstring(IG_OWNGOAL): marca gol contra
+  push {{r0, lr}}
+  adr r1, Tg
+  ldr r2, [r1]
+  add r1, r1, r2
+  ldr r1, [r1]
+  mov r2, #1
+  strb r2, [r1, #0x2b7]
+  pop {{r0, lr}}
+  b S_FTSSTR
+
 tramp_msg:                 @ lesao / melhor em campo: r0=id r1=texto r2=&nome(+0x24) r3=time
   push {{r4-r8, lr}}
   mov r4, r0
@@ -338,7 +448,17 @@ tramp_msg:                 @ lesao / melhor em campo: r0=id r1=texto r2=&nome(+0
   ldr r6, [r6]
   cmp r4, #15
   moveq r0, #4             @ lesao
+  beq Lset
+  cmp r4, #11
   movne r0, #5             @ melhor em campo
+  bne Lset
+  ldrb r0, [r6, #0x2b7]    @ mensagem de gol: gol contra?
+  mov r1, #0
+  strb r1, [r6, #0x2b7]
+  cmp r0, #0
+  moveq r0, #1             @ gol
+  movne r0, #6             @ gol contra
+Lset:
   strb r0, [r6, #0x2b5]
   pop {{r4-r8, pc}}
 .ltorg
