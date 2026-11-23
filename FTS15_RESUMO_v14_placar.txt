@@ -1,0 +1,9 @@
+FTS15 - CONTORNO FINO DO PLACAR (etapa17, 23/11/2026)
+Achado: CHudCompScore::Render chama a funcao auxiliar 0x285bf8, que faz o
+contorno desenhando o texto 8 vezes deslocado (tabela de 8 pares dx,dy em
+0x285cac).  Original: 0.9 unidade (~3 px).  Patch: dx=0.3 (~1 px), dy=0.45.
+So essa funcao e usada (4 chamadas: siglas e gols).  Cores, posicao, tamanho
+e outros textos nao mudam.  Grava 64 bytes em 0x285cac; backup .orig_placar.
+COMANDO:
+cd ~/FTS-15 && unzip -o ~/storage/downloads/FTS15_etapa17_placar.zip > /dev/null && bash FTS15-PATCH/patch_placar.sh
+(depois de testar:  && git add -A && git commit -m "Placar: contorno fino" && git push)
