@@ -33,3 +33,14 @@ def decode_bl(word,here):
     o=word&0xFFFFFF
     if o&0x800000: o-=0x1000000
     return here+8+o*4
+
+def with_cond(word, cond): return (word & 0x0FFFFFFF) | (cond<<28)
+def lsr_i(rd,rm,imm): return AL|0x01A00020|(rd<<12)|(imm<<7)|rm
+def and_i(rd,rn,imm): assert 0<=imm<256; return AL|0x02000000|(rn<<16)|(rd<<12)|imm
+def add_r(rd,rn,rm): return AL|0x00800000|(rn<<16)|(rd<<12)|rm
+def cmp_i(rn,imm): assert 0<=imm<256; return AL|0x03500000|(rn<<16)|imm
+def decode_b(word,here):
+    assert (word>>24)==0xEA
+    o=word&0xFFFFFF
+    if o&0x800000: o-=0x1000000
+    return here+8+o*4
