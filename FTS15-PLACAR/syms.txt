@@ -1,0 +1,2 @@
+--defsym=ALPHA=0x1308e0
+--defsym=UNFRECT4=0x3757d8
