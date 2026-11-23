@@ -1,0 +1,8 @@
+Contorno preto no placar do FTS15 (so sigla do time e gols)
+===========================================================
+python3 tools/patch_contorno.py ENTRADA.so SAIDA.so [ESPESSURA]
+  ESPESSURA padrao 0.9 (unidades do HUD, ~2px em 720p). Mais grosso: 1.2.
+Seguro: confere os bytes originais antes de mexer, recusa se for outro
+arquivo e avisa se ja estiver aplicado. Nao altera o arquivo de entrada.
+Verificar no r2 (deve mostrar os 2 stubs a partir de 0x285bf0):
+  r2 -q -a arm -b 32 -c "pd 52 @ 0x285bf0; pd 1 @ 0x2855e0; pd 1 @ 0x2855f0" SAIDA.so
