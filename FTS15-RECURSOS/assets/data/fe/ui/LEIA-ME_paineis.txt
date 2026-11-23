@@ -1,0 +1,9 @@
+FOTOS DOS PAINEIS DO MENU (cada painel com a sua) - nome = o que representa
+  fe_painel_proxima_partida.png  512x256  painel "PROXIMA PARTIDA" (estadio azul, luzes)
+  fe_painel_modos_de_jogo.png    512x256  painel "MODOS DE JOGO" (neon + bola)
+  fe_painel_desafio_diario.png   512x256  painel "DESAFIO DA PARTIDA DIARIA" (gramado)
+  fe_painel_personalizar.png     256x256  painel "PERSONALIZAR" (camisa)
+  fe_painel_meu_perfil.png       256x256  painel "MEU PERFIL" (engrenagem)
+Fundo geral: fe_background.png / fe_backgroundblur.png (zip anterior).
+AINDA NAO APARECEM NO JOGO: falta o codigo do menu carregar cada uma
+(depende do asm que o usuario vai mandar: fe_cores_asm.txt).
