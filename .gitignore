@@ -1,2 +1,4 @@
 build/
 apktool.jar
+*.so.orig_*
+*.so.bak_*
