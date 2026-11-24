@@ -3,7 +3,7 @@
 # Substitui o patch dos escudos (e6). Uso: python3 patch_menu_grande.py [libFTS15.so]
 import struct,base64,sys,os
 LIB=sys.argv[1] if len(sys.argv)>1 else os.path.expanduser('~/FTS-15/FTS15-RECURSOS/lib/armeabi-v7a/libFTS15.so')
-BLOB=base64.b64decode("AAq57hzG1OUAAFzjXc+P4hnOjxK4AJnlXBGf5QEAUOEGzY+SAPrc7QHq3O0C2tztA8rc7R7/L+EACjjukMod7gEBXONPz4/iVs+PEgR6nO0HijjuHv8v4QDGlOUAAADqBMaU5WBHLekB3E3iGJGd5QyAoOEAUKDhAWCg4f+kGeIZAAAK/wTg4wCgiuEIAI3iCBCg4QAgoOMAMODjAcDg4wDAjeUDwKDjBMCN5Tnj/OuQyh3uAQFc48jAj+LkwI8SEGoA7gcK3O0gCjDuECoQ7hQwnOUYwJzlAMCN5QSgjeUIAI3iBRCg4WAB/esB3I3iYIe96ATgLeUHAADrBOCd5AeacO4e/y/hBOAt5QIAAOsE4J3kh5p57h7/L+EHAC3pABAP4QAgoOMcBtflAABQ4wEgoBO4wJnlPACf5QAAXOEBIKCTNMCP4gLBjOAAepztAfAo4QcAvege/y/hIEAt6efm/OuQGh3uAQFR4wEAABoAEKDhgCT96yCAvegAADRDAADwQQAAUEEAAPBBAACgQAAAAEAAAPjBAACIQQAAoEEAANxBAACgPwAAUEEAAABAAACAPwAA6MEAAABBAAAwQZqZgUHNzMy/")
+BLOB=base64.b64decode("AAq57hzG1OUAAFzjBs2P4mfPjxK4AJnlaBGf5QEAUOFjz4+SAPrc7QHq3O0C2tztA8rc7R7/L+EACjjukMod7gEBXONSz4/iWc+PEgR6nO0HijjuHv8v4QDGlOUAAADqBMaU5WBHLekB3E3iGJGd5QyAoOEAUKDhAWCg4f+kGeIZAAAK/wTg4wCgiuEIAI3iCBCg4QAgoOMAMODjAcDg4wDAjeUDwKDjBMCN5Tnj/OuQyh3uAQFc49TAj+LwwI8SEGoA7gcK3O0gCjDuECoQ7hQwnOUYwJzlAMCN5QSgjeUIAI3iBRCg4WAB/esB3I3iYIe96ATgLeUHAADrBOCd5AeacO4e/y/hBOAt5QIAAOsE4J3kh5p57h7/L+EHAC3pABAP4QAgoOMcBtflAABQ4wEgoBO4wJnlSACf5QAAXOEBIKCTQMCP4gLBjOAAepztAfAo4QcAvege/y/hIEAt6efm/OuQGh3uAQFR4wQAABoAAKDjU10G6wAQAOOAH0vjfST96yCAvegAADRDAADwQQAAUEEAAPBBAACgQAAAAEAAAPjBAACIQQAAoEEAANxBAACgPwAAUEEAAABAAACAPwAA6MEAAABBAAAwQZqZgUHNzMy/")
 CAVE=0x1fb5c8
 OFF=dict(init=0,shift=0x38,stub1=0x58,stub2=0x60,calcA=0xf4,calcB=0x108,scl=0x15c)
 d=bytearray(open(LIB,'rb').read())
@@ -26,7 +26,7 @@ SIMPLE=[
 ]
 HOOKS=[(0x2112e0,'init',0xeeb90a00),(0x211300,'shift',0xee380a00),(0x211340,'stub1',None),(0x211530,'stub2',None),
        (0x20f5ac,'calcA',0xee709a0c),(0x211384,'scl',0xebfc8fd0),(0x211540,'scl',0xebfc8f61),(0x20f5d8,'calcB',0xee799a8c)]
-if all(R(a)==n for a,_,n in SIMPLE) and R(0x2112e0)==bl(0x2112e0,CAVE):
+if all(R(a)==n for a,_,n in SIMPLE) and R(0x2112e0)==bl(0x2112e0,CAVE) and bytes(d[CAVE:CAVE+len(BLOB)])==BLOB:
     print('Ja aplicado.'); sys.exit(0)
 for a,old,new in SIMPLE:
     assert R(a) in old+[new],'bytes inesperados em 0x%x (%08x). Nada foi alterado.'%(a,R(a))

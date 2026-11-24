@@ -109,7 +109,10 @@ scl:                        @ no lugar de "bl FESU_SetFontScaleForWidth": no mod
   vmov r1, s27
   cmp r1, #0x40000000
   bne 1f
-  mov r1, r0
+  mov r0, #0
+  bl GETSCALE                 @ r0 = escala X real
+  movw r1, #0
+  movt r1, #0xbf80            @ y = -1.0 -> y igual a x
   bl SETSCALE
 1:
   pop {r5, pc}
