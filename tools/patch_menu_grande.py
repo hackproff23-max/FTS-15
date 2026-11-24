@@ -3,9 +3,9 @@
 # Substitui o patch dos escudos (e6). Uso: python3 patch_menu_grande.py [libFTS15.so]
 import struct,base64,sys,os
 LIB=sys.argv[1] if len(sys.argv)>1 else os.path.expanduser('~/FTS-15/FTS15-RECURSOS/lib/armeabi-v7a/libFTS15.so')
-BLOB=base64.b64decode("AAq57hzG1OUAAFzjEs6P4k/PjxIA+tztAerc7QLa3O0DytztHv8v4QAKOO4cxtTlAABc4/jAj+JFz48SBHqc7QeKOO4e/y/hAMaU5QAAAOoExpTlYEct6QHcTeIYkZ3lDICg4QBQoOEBYKDh/6QZ4hkAAAr/BODjAKCK4QgAjeIIEKDhACCg4wAw4OMBwODjAMCN5QPAoOMEwI3lO+P86xzG1OUAAFzjhMCP4qDAjxIQagDuBwrc7SAKMO4QKhDuFDCc5RjAnOUAwI3lBKCN5QgAjeIFEKDhYgH96wHcjeJgh73oBAAt5RwG1+UBAADiNMCP4gDBjOAAepztBACd5AeacO4e/y/hBAAt5RwG1+UBAADiEMCP4gDBjOAAepztBACd5Ieaee4e/y/hAADwQQAAUEEAAPBBAACgQAAAAEAAAPjBAACIQQAAoEEAANxBAACgPwAAUEEAAABAAACAPwAA6MEAAABBAAAwQZqZgUHNzMy/")
-CAVE=0x1fb5d0
-OFF=dict(init=0,shift=0x28,stub1=0x48,stub2=0x50,calcA=0xe4,calcB=0x108)
+BLOB=base64.b64decode("AAq57hzG1OUAAFzjXc+P4hnOjxK4AJnlXBGf5QEAUOEGzY+SAPrc7QHq3O0C2tztA8rc7R7/L+EACjjukMod7gEBXONPz4/iVs+PEgR6nO0HijjuHv8v4QDGlOUAAADqBMaU5WBHLekB3E3iGJGd5QyAoOEAUKDhAWCg4f+kGeIZAAAK/wTg4wCgiuEIAI3iCBCg4QAgoOMAMODjAcDg4wDAjeUDwKDjBMCN5Tnj/OuQyh3uAQFc48jAj+LkwI8SEGoA7gcK3O0gCjDuECoQ7hQwnOUYwJzlAMCN5QSgjeUIAI3iBRCg4WAB/esB3I3iYIe96ATgLeUHAADrBOCd5AeacO4e/y/hBOAt5QIAAOsE4J3kh5p57h7/L+EHAC3pABAP4QAgoOMcBtflAABQ4wEgoBO4wJnlPACf5QAAXOEBIKCTNMCP4gLBjOAAepztAfAo4QcAvege/y/hIEAt6efm/OuQGh3uAQFR4wEAABoAEKDhgCT96yCAvegAADRDAADwQQAAUEEAAPBBAACgQAAAAEAAAPjBAACIQQAAoEEAANxBAACgPwAAUEEAAABAAACAPwAA6MEAAABBAAAwQZqZgUHNzMy/")
+CAVE=0x1fb5c8
+OFF=dict(init=0,shift=0x38,stub1=0x58,stub2=0x60,calcA=0xf4,calcB=0x108,scl=0x15c)
 d=bytearray(open(LIB,'rb').read())
 R=lambda a:struct.unpack_from('<I',d,a)[0]
 def bl(src,dst): return 0xEB000000|(((dst-(src+8))>>2)&0xFFFFFF)
@@ -25,7 +25,7 @@ SIMPLE=[
  (0x211584,[0xee3a8a0b],0xee3a8a2e),
 ]
 HOOKS=[(0x2112e0,'init',0xeeb90a00),(0x211300,'shift',0xee380a00),(0x211340,'stub1',None),(0x211530,'stub2',None),
-       (0x20f5ac,'calcA',0xee709a0c),(0x20f5d8,'calcB',0xee799a8c)]
+       (0x20f5ac,'calcA',0xee709a0c),(0x211384,'scl',0xebfc8fd0),(0x211540,'scl',0xebfc8f61),(0x20f5d8,'calcB',0xee799a8c)]
 if all(R(a)==n for a,_,n in SIMPLE) and R(0x2112e0)==bl(0x2112e0,CAVE):
     print('Ja aplicado.'); sys.exit(0)
 for a,old,new in SIMPLE:
