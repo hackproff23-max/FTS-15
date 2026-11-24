@@ -1,0 +1,1 @@
+--defsym=LOGO=0x134360 --defsym=DRAW=0x13bc38
